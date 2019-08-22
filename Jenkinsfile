@@ -8,7 +8,7 @@ node('docker') {
 
   mainBranch = "master"
 
-  def pluginName = ${env.PLUGIN_NAME}
+  def pluginName = env.JOB_NAME
 
   properties([
     // Keep only the last 10 build to preserve space
@@ -18,7 +18,7 @@ node('docker') {
 
   timeout(activity: true, time: 20, unit: 'MINUTES') {
 
-    Git git = new Git('https://bitbucket.org/scm-manager/' + pluginName + '.git')
+    Git git = new Git(this)
 
     catchError {
 
@@ -26,7 +26,9 @@ node('docker') {
 
       stage('Checkout') {
         deleteDir()
-        checkout scm
+        git branch: mainBranch,
+            url: 'https://bitbucket.org/scm-manager/' + pluginName + '.git'
+        sh "ls -lat"
       }
 
       stage('Build') {
@@ -49,12 +51,12 @@ node('docker') {
         }
       }
     }
-
-    // Archive Unit and integration test results, if any
-    junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
-
-    // Find maven warnings and visualize in job
-    warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
+//
+//     // Archive Unit and integration test results, if any
+//     junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
+//
+//     // Find maven warnings and visualize in job
+//     warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
 
     mailIfStatusChanged(git.commitAuthorEmail)
   }
