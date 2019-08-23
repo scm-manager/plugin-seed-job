@@ -1,0 +1,7 @@
+git:latest
+job-dsl:latest
+docker-workflow:latest
+workflow-aggregator:latest
+workflow-cps:latest
+workflow-cps-global-lib:latest
+pipeline-github-lib:latest

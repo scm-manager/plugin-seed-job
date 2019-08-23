@@ -1,0 +1,16 @@
+param = PLUGIN_NAME
+
+repo url = https://bitbucket.org/scm-manager/plugin-seed-job.git
+
+job dsl :
+
+def pluginName = jm.getParameters().PLUGIN_NAME
+
+pipelineJob(pluginName) {
+  definition {
+    cps {
+      script(readFileFromWorkspace('Jenkinsfile'))
+      sandbox()
+    }
+  }
+}

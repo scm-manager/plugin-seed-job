@@ -2,7 +2,9 @@ version: '2.3'
 services:
   jenkins:
     container_name: jenkins
-    image: jenkins/jenkins:lts
+    build: docker
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
     ports:
       - "8080:8080"
       - "50000:50000"
