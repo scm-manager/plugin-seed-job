@@ -9,3 +9,4 @@ junit:latest
 warnings:latest
 envinject:latest
 mercurial:latest
+pipeline-utility-steps:latest

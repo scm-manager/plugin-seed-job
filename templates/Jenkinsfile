@@ -21,7 +21,6 @@ node('docker') {
       Maven mvn = setupMavenBuild()
 
       stage('Checkout') {
-        // deleteDir()
         if ("Git".equals(env.scmType)) {
           git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
         } else {
@@ -38,16 +37,13 @@ node('docker') {
         mvn 'test -Dmaven.test.failure.ignore=true'
       }
 
-//       stage('SonarQube') {
-//
-//         def sonarQube = new SonarCloud(this, [sonarQubeEnv: 'sonarcloud.io-scm'])
-//
-//         sonarQube.analyzeWith(mvn)
-//
-//         if (!sonarQube.waitForQualityGateWebhookToBeCalled()) {
-//           currentBuild.result ='UNSTABLE'
-//         }
-//       }
+      stage('SonarQube') {
+        def sonarQube = new SonarCloud(this, [sonarQubeEnv: 'sonarcloud.io-scm'])
+        sonarQube.analyzeWith(mvn)
+        if (!sonarQube.waitForQualityGateWebhookToBeCalled()) {
+          currentBuild.result ='UNSTABLE'
+        }
+      }
 
       stage('Deployment') {
         mvn.useDeploymentRepository([
@@ -58,25 +54,15 @@ node('docker') {
       }
 
       stage('Plugin Center') {
-        if (isMainBranch()) {
-          String sha256sum = sh(returnStdout: true, script: 'sha256sum target/*.smp | awk "{print $1}"')
-          String version = mvn.getVersion()
+        if (isMainBranch() && !isSnapshotVersion()) {
           dir("plugin-center") {
-            git changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
+            git changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git', credentialsId: 'scmmarvin-at-bitbucket'
             dir("src/plugins/${env.pluginName}/releases") {
-              String filename = version.replace('.', '-') + ".yaml"
-              writeFile encoding: 'UTF-8', file: filename, text: """
-plugin: ${env.pluginName}
-tag: ${version}
-date: ${getCurrentDate()}
-url: https://maven.scm-manager.org/nexus/...
-checksum: ${sha256sum}
-conditions:
-  os: linux
-"""
+              writeReleaseDescriptor()
             }
           }
-
+        } else {
+          echo "skip plugin center deployment"
         }
       }
 
@@ -90,6 +76,49 @@ conditions:
 
        mailIfStatusChanged(git.commitAuthorEmail)
   }
+}
+
+boolean isSnapshotVersion() {
+  def project = readMavenPom file: "${WORKSPACE}/pom.xml"
+  return project.version.endsWith("-SNAPSHOT")
+}
+
+void writeReleaseDescriptor() {
+  String sha256sum = getChecksum()
+  def project = readMavenPom file: "${WORKSPACE}/pom.xml"
+  String filename = project.version.replace('.', '-') + ".yaml"
+  writeFile encoding: 'UTF-8', file: filename, text: """plugin: ${env.pluginName}
+tag: ${project.version}
+date: ${getCurrentDate()}
+url: ${createDownloadUrl(project)}
+checksum: ${sha256sum}
+${createConditions()}
+"""
+  sh "git add ${filename}"
+  sh "git commit --author 'Jenkins ${env.pluginName} <ci@scm-manager.org>'"
+  sh "git push origin master"
+}
+
+@NonCPS
+String createConditions() {
+  def pluginXml = new XmlSlurper().parse(new File("${WORKSPACE}/target/classes/META-INF/scm/plugin.xml"))
+  String conditions = ""
+  if (pluginXml.conditions) {
+    conditions = "conditions:"
+    if (pluginXml.conditions.'min-version') {
+      conditions += "\n  minVersion: ${pluginXml.conditions.'min-version'.text()}"
+    }
+    if (pluginXml.conditions.os) {
+      conditions += "\n  os:"
+      pluginXml.conditions.os.children().each { os -> 
+        conditions += "\n  - ${os.text()}" 
+      }
+    }
+    if (pluginXml.conditions.arch) {
+      conditions += "\n  arch: ${pluginXml.conditions.arch.text()}"
+    }
+  }
+  return conditions
 }
 
 Maven setupMavenBuild() {
@@ -114,9 +143,21 @@ String getMainBranch() {
 }
 
 boolean isMainBranch() {
-  return true //getMainBranch().equals(env.BRANCH_NAME)
+  return getMainBranch().equals(env.BRANCH_NAME)
 }
 
 String getCurrentDate() {
   return new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
+}
+
+String getChecksum() {
+  return sh(returnStdout: true, script: "sha256sum ${WORKSPACE}/target/*.smp").trim().split("\\s+")[0]
+}
+
+String createDownloadUrl(def project) {
+  String groupId = project.groupId ? project.groupId : project.parent.groupId
+  groupId = groupId.replace('.', '/')
+  String url = "https://maven.scm-manager.org/nexus/content/repositories/plugin-releases/"
+  url += groupId + "/" + project.artifactId + "/" + project.version + "/" + project.artifactId + "-" + project.version + ".smp"
+  return url
 }
