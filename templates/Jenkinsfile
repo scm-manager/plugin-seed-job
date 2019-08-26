@@ -6,8 +6,6 @@ import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
 
-  mainBranch = "master"
-
   properties([
     // Keep only the last 10 build to preserve space
     buildDiscarder(logRotator(numToKeepStr: '10')),
@@ -52,9 +50,30 @@ node('docker') {
 //       }
 
       stage('Deployment') {
+        mvn.useDeploymentRepository([id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Nexus2'])
+        mvn.deployToNexusRepository()
+      }
+
+      stage('Plugin Center') {
         if (isMainBranch()) {
-          mvn.useDeploymentRepository([id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Nexus2'])
-          mvn.deployToNexusRepository()
+          String sha256sum = sh(returnStdout: true, script: 'sha256sum target/*.smp | awk "{print $1}"')
+          String version = mvn.getVersion()
+          dir("plugin-center") {
+            git url: 'https://bitbucket.org/scm-manager/plugin-center.git'
+            dir("src/plugins/${env.pluginName}/releases") {
+              String filename = version.replace('.', '-') + ".yaml"
+              writeFile encoding: 'UTF-8', file: filename, text: """
+plugin: ${env.pluginName}
+tag: ${version}
+date: ${new Date()}
+url: https://maven.scm-manager.org/nexus/...
+checksum: ${sha256sum}
+conditions:
+  os: linux
+"""
+            }
+          }
+
         }
       }
 
@@ -70,8 +89,6 @@ node('docker') {
   }
 }
 
-String mainBranch
-
 Maven setupMavenBuild() {
   // Keep this version number in sync with .mvn/maven-wrapper.properties
   Maven mvn = new MavenInDocker(this, "3.5.2-jdk-8")
@@ -86,6 +103,13 @@ Maven setupMavenBuild() {
   return mvn
 }
 
+String getMainBranch() {
+  if ("Git".equals(env.scmType)) {
+    return "master"
+  }
+  return "default"
+}
+
 boolean isMainBranch() {
-  return mainBranch.equals(env.BRANCH_NAME)
+  return getMainBranch().equals(env.BRANCH_NAME)
 }
