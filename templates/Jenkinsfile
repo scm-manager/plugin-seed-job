@@ -1,7 +1,7 @@
 #!groovy
 
 // Keep the version in sync with the one used in pom.xml in order to get correct syntax completion.
-@Library('github.com/cloudogu/ces-build-lib@bc16ce2')
+@Library('github.com/cloudogu/ces-build-lib@503b952')
 import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
@@ -21,7 +21,7 @@ node('docker') {
       Maven mvn = setupMavenBuild()
 
       stage('Checkout') {
-        deleteDir()
+        // deleteDir()
         if ("Git".equals(env.scmType)) {
           git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
         } else {
@@ -50,7 +50,10 @@ node('docker') {
 //       }
 
       stage('Deployment') {
-        mvn.useDeploymentRepository([id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Nexus2'])
+        mvn.useDeploymentRepository([
+          id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
+          snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
+        ])
         mvn.deployToNexusRepository()
       }
 
@@ -59,13 +62,13 @@ node('docker') {
           String sha256sum = sh(returnStdout: true, script: 'sha256sum target/*.smp | awk "{print $1}"')
           String version = mvn.getVersion()
           dir("plugin-center") {
-            git url: 'https://bitbucket.org/scm-manager/plugin-center.git'
+            git changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
             dir("src/plugins/${env.pluginName}/releases") {
               String filename = version.replace('.', '-') + ".yaml"
               writeFile encoding: 'UTF-8', file: filename, text: """
 plugin: ${env.pluginName}
 tag: ${version}
-date: ${new Date()}
+date: ${getCurrentDate()}
 url: https://maven.scm-manager.org/nexus/...
 checksum: ${sha256sum}
 conditions:
@@ -111,5 +114,9 @@ String getMainBranch() {
 }
 
 boolean isMainBranch() {
-  return getMainBranch().equals(env.BRANCH_NAME)
+  return true //getMainBranch().equals(env.BRANCH_NAME)
+}
+
+String getCurrentDate() {
+  return new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
 }
