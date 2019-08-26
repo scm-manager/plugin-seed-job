@@ -2,7 +2,7 @@ node {
 
   properties([
     parameters([
-      string(name: 'PLUGIN_NAME', trim: true, description: "Name of the plugin")
+      string(name: 'pluginName', trim: true, description: "Name of the plugin")
     ])
   ])
 
@@ -18,13 +18,16 @@ node {
      folder('scm-manager/plugins') {
        description('SCM-Manager Plugins')
      }
-     def pluginName = jm.getParameters().PLUGIN_NAME
+     def pluginName = jm.getParameters().pluginName
      pipelineJob('scm-manager/plugins/' + pluginName) {
        definition {
          cps {
            script(readFileFromWorkspace('templates/Jenkinsfile'))
            sandbox()
          }
+       }
+       environmentVariables {
+         env("pluginName", pluginName)
        }
      }
     '''

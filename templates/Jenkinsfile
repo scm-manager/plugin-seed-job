@@ -8,8 +8,6 @@ node('docker') {
 
   mainBranch = "master"
 
-  def pluginName = env.JOB_NAME
-
   properties([
     // Keep only the last 10 build to preserve space
     buildDiscarder(logRotator(numToKeepStr: '10')),
@@ -26,7 +24,7 @@ node('docker') {
 
       stage('Checkout') {
         deleteDir()
-        git url: 'https://bitbucket.org/scm-manager/' + pluginName + '.git'
+        git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
       }
 
       stage('Build') {
