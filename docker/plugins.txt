@@ -5,3 +5,5 @@ workflow-aggregator:latest
 workflow-cps:latest
 workflow-cps-global-lib:latest
 pipeline-github-lib:latest
+junit:latest
+warnings:latest

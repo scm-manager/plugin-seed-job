@@ -1,17 +1,23 @@
 version: '2.3'
 services:
+
+  mail:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   jenkins:
     container_name: jenkins
     build: docker
     environment:
-      # TODO Replace pwd
-      JENKINS_HOME: "${pwd}/docker/jenkins_home"
+      JENKINS_HOME: "${PWD}/docker/jenkins_home"
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       # TODO Replace pwd
-      - ./docker/jenkins_home:${pwd}/docker/jenkins_home
+      - ./docker/jenkins_home:${PWD}/docker/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     privileged: true

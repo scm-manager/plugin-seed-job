@@ -5,7 +5,7 @@ COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN /usr/local/bin/install-plugins.sh < /usr/share/jenkins/ref/plugins.txt
 
 # set docker label to master node
-COPY init.groovy.d/SetDockerLabel.groovy /usr/share/jenkins/ref/init.groovy.d/SetDockerLabel.groovy
+COPY init.groovy.d/* /usr/share/jenkins/ref/init.groovy.d/
 
 # switch to root, in order to be able to install packages
 USER root
