@@ -24,7 +24,6 @@ node {
        definition {
          cps {
            script(readFileFromWorkspace('templates/Jenkinsfile'))
-           sandbox()
          }
        }
        environmentVariables {
