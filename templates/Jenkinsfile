@@ -48,15 +48,23 @@ node('docker') {
 //           currentBuild.result ='UNSTABLE'
 //         }
 //       }
-    }
-//
-//     // Archive Unit and integration test results, if any
-//     junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
-//
-//     // Find maven warnings and visualize in job
-//     warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
 
-//     mailIfStatusChanged(git.commitAuthorEmail)
+      stage('Deployment') {
+        if (isMainBranch()) {
+          mvn.useDeploymentRepository([id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Nexus2'])
+          mvn.deployToNexusRepository()
+        }
+      }
+
+    }
+
+       // Archive Unit and integration test results, if any
+       junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
+  
+       // Find maven warnings and visualize in job
+       warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
+
+       mailIfStatusChanged(git.commitAuthorEmail)
   }
 }
 
