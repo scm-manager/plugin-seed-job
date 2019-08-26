@@ -2,7 +2,8 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: "Name of the plugin")
+      string(name: 'pluginName', trim: true, description: "Name of the plugin"),
+      choice(name: 'scmType', choices: ['Git', 'Mercurial'], description: 'Type of SCM')
     ])
   ])
 
@@ -28,6 +29,7 @@ node {
        }
        environmentVariables {
          env("pluginName", pluginName)
+         env("scmType", scmType)
        }
      }
     '''

@@ -24,7 +24,11 @@ node('docker') {
 
       stage('Checkout') {
         deleteDir()
-        git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
+        if ("Git".equals(env.scmType)) {
+          git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
+        } else {
+          checkout([$class: 'MercurialSCM', source: 'https://bitbucket.org/scm-manager/' + env.pluginName])
+        }
       }
 
       stage('Build') {

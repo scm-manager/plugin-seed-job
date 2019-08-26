@@ -7,3 +7,5 @@ workflow-cps-global-lib:latest
 pipeline-github-lib:latest
 junit:latest
 warnings:latest
+envinject:latest
+mercurial:latest
