@@ -54,9 +54,9 @@ node('docker') {
       }
 
       stage('Plugin Center') {
-        if (isMainBranch() && !isSnapshotVersion()) {
+        if (!isSnapshotVersion()) {
           dir("plugin-center") {
-            git changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git', credentialsId: 'scmmarvin-at-bitbucket'
+            git branch: 'master', changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
             dir("src/plugins/${env.pluginName}/releases") {
               writeReleaseDescriptor()
             }
@@ -87,21 +87,25 @@ void writeReleaseDescriptor() {
   String sha256sum = getChecksum()
   def project = readMavenPom file: "${WORKSPACE}/pom.xml"
   String filename = project.version.replace('.', '-') + ".yaml"
+  def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
   writeFile encoding: 'UTF-8', file: filename, text: """plugin: ${env.pluginName}
 tag: ${project.version}
 date: ${getCurrentDate()}
 url: ${createDownloadUrl(project)}
 checksum: ${sha256sum}
-${createConditions()}
+${createConditions(pluginXmlAsString)}
 """
   sh "git add ${filename}"
-  sh "git commit --author 'Jenkins ${env.pluginName} <ci@scm-manager.org>'"
-  sh "git push origin master"
+  sh "git commit --author 'Jenkins ${env.pluginName} <ci@scm-manager.org>' -m '${env.pluginName}: release ${project.version}'"
+  withCredentials([usernamePassword(credentialsId: 'scmmarvin-at-bitbucket', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
+    sh 'git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"'
+    sh "git push https://bitbucket.org/scm-manager/plugin-center.git HEAD:master"
+  }
 }
 
 @NonCPS
-String createConditions() {
-  def pluginXml = new XmlSlurper().parse(new File("${WORKSPACE}/target/classes/META-INF/scm/plugin.xml"))
+String createConditions(String pluginXmlAsString) {
+  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
   String conditions = ""
   if (pluginXml.conditions) {
     conditions = "conditions:"
@@ -126,7 +130,7 @@ Maven setupMavenBuild() {
   Maven mvn = new MavenInDocker(this, "3.5.2-jdk-8")
   mvn.additionalArgs += ' -Pci'
 
-  if (isMainBranch()) {
+  if (isSnapshotVersion()) {
     // Release starts javadoc, which takes very long, so do only for certain branches
     mvn.additionalArgs += ' -DperformRelease'
     // JDK8 is more strict, we should fix this before the next release. Right now, this is just not the focus, yet.
@@ -135,16 +139,6 @@ Maven setupMavenBuild() {
   return mvn
 }
 
-String getMainBranch() {
-  if ("Git".equals(env.scmType)) {
-    return "master"
-  }
-  return "default"
-}
-
-boolean isMainBranch() {
-  return getMainBranch().equals(env.BRANCH_NAME)
-}
 
 String getCurrentDate() {
   return new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
