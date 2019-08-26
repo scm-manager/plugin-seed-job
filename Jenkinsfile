@@ -26,6 +26,9 @@ node {
            script(readFileFromWorkspace('templates/Jenkinsfile'))
          }
        }
+       triggers {
+         scm('')
+       }
        environmentVariables {
          env("pluginName", pluginName)
          env("scmType", scmType)
