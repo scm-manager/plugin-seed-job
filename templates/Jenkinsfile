@@ -18,15 +18,13 @@ node('docker') {
 
     catchError {
 
-      Maven mvn = setupMavenBuild()
-
       stage('Checkout') {
-        if ("Git".equals(env.scmType)) {
-          git url: 'https://bitbucket.org/scm-manager/' + env.pluginName + '.git'
-        } else {
-          checkout([$class: 'MercurialSCM', source: 'https://bitbucket.org/scm-manager/' + env.pluginName])
-        }
+        git url: 'https://github.com/scm-manager/' + env.pluginName + '.git'
       }
+
+      // we have to configure maven after checkout,
+      // because we read the pom during the maven setup
+      Maven mvn = setupMavenBuild()
 
       stage('Build') {
         mvn 'clean install -DskipTests'
@@ -68,13 +66,13 @@ node('docker') {
 
     }
 
-       // Archive Unit and integration test results, if any
-       junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
-  
-       // Find maven warnings and visualize in job
-       warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
+    // Archive Unit and integration test results, if any
+    junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
 
-       mailIfStatusChanged(git.commitAuthorEmail)
+    // Find maven warnings and visualize in job
+    warnings consoleParsers: [[parserName: 'Maven']], canRunOnFailed: true
+
+    mailIfStatusChanged(git.commitAuthorEmail)
   }
 }
 

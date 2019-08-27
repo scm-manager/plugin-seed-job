@@ -2,8 +2,7 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: "Name of the plugin"),
-      choice(name: 'scmType', choices: ['Git', 'Mercurial'], description: 'Type of SCM')
+      string(name: 'pluginName', trim: true, description: "Name of the plugin")
     ])
   ])
 
@@ -26,12 +25,14 @@ node {
            script(readFileFromWorkspace('templates/Jenkinsfile'))
          }
        }
+       properties {
+          githubProjectUrl('https://github.com/scm-manager/' + pluginName)
+       }
        triggers {
-         scm('')
+         githubPush()
        }
        environmentVariables {
          env("pluginName", pluginName)
-         env("scmType", scmType)
        }
      }
     '''
