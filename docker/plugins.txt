@@ -10,3 +10,6 @@ warnings:latest
 envinject:latest
 mercurial:latest
 pipeline-utility-steps:latest
+pipeline-multibranch-defaults-plugin:latest
+github:latest
+github-branch-source:latest

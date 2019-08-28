@@ -19,23 +19,32 @@ node {
        description('SCM-Manager Plugins')
      }
      def pluginName = jm.getParameters().pluginName
-     pipelineJob('scm-manager/plugins/' + pluginName) {
-       definition {
-         cps {
-           script(readFileFromWorkspace('templates/Jenkinsfile'))
-           sandbox()
+     multibranchPipelineJob('scm-manager/plugins/' + pluginName) {
+       // SCM source or additional configuration
+       branchSources {
+         github {
+           id('github@scm-manager/' + pluginName) // IMPORTANT: use a constant and unique identifier
+           repoOwner('scm-manager')
+           repository(pluginName)
          }
-       }
-       properties {
-          githubProjectUrl('https://github.com/scm-manager/' + pluginName)
-       }
-       triggers {
-         githubPush()
-       }
-       environmentVariables {
-         env("pluginName", pluginName)
-       }
-     }
+      }
+      orphanedItemStrategy {
+        discardOldItems {
+          numToKeep(5)
+        }
+      }
+      factory {
+        pipelineBranchDefaultsProjectFactory {
+          // The ID of the default Jenkinsfile to use from the global Config
+          // File Management.
+          scriptId 'Jenkinsfile'
+
+          // If enabled, the configured default Jenkinsfile will be run within
+          // a Groovy sandbox.
+          useSandbox true
+        }
+      }
+    }
     '''
   }
 }

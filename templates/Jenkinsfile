@@ -19,7 +19,7 @@ node('docker') {
     catchError {
 
       stage('Checkout') {
-        git branch: 'develop', url: 'https://github.com/scm-manager/' + env.pluginName + '.git'
+        checkout scm
       }
 
       // we have to configure maven after checkout,
@@ -55,9 +55,7 @@ node('docker') {
         if (!isSnapshotVersion()) {
           dir("plugin-center") {
             git branch: 'master', changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
-            dir("src/plugins/${env.pluginName}/releases") {
-              writeReleaseDescriptor()
-            }
+            writeReleaseDescriptor()
           }
         } else {
           echo "skip plugin center deployment"
@@ -86,19 +84,32 @@ void writeReleaseDescriptor() {
   def project = readMavenPom file: "${WORKSPACE}/pom.xml"
   String filename = project.version.replace('.', '-') + ".yaml"
   def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
-  writeFile encoding: 'UTF-8', file: filename, text: """plugin: ${env.pluginName}
+  String pluginName = createPluginName(pluginXmlAsString)
+
+  dir("src/plugins/${pluginName}/releases") {
+    
+    writeFile encoding: 'UTF-8', file: filename, text: """plugin: ${pluginName}
 tag: ${project.version}
 date: ${getCurrentDate()}
 url: ${createDownloadUrl(project)}
 checksum: ${sha256sum}
 ${createConditions(pluginXmlAsString)}
-"""
-  sh "git add ${filename}"
-  sh "git commit --author 'Jenkins ${env.pluginName} <ci@scm-manager.org>' -m '${env.pluginName}: release ${project.version}'"
-  withCredentials([usernamePassword(credentialsId: 'scmmarvin-at-bitbucket', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
-    sh 'git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"'
-    sh "git push https://bitbucket.org/scm-manager/plugin-center.git HEAD:master"
+  """
+    sh "git add ${filename}"
+    sh "git commit --author 'Jenkins ${pluginName} <ci@scm-manager.org>' -m '${pluginName}: release ${project.version}'"
+    withCredentials([usernamePassword(credentialsId: 'scmmarvin-at-bitbucket', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
+      sh 'git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"'
+      sh "git push https://bitbucket.org/scm-manager/plugin-center.git HEAD:master"
+    }
+
   }
+
+}
+
+@NonCPS
+String createPluginName(String pluginXmlAsString) {
+  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
+  return pluginXml.information.name.text()
 }
 
 @NonCPS
