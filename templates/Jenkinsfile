@@ -19,7 +19,7 @@ node('docker') {
     catchError {
 
       stage('Checkout') {
-        git url: 'https://github.com/scm-manager/' + env.pluginName + '.git'
+        git branch: 'develop', url: 'https://github.com/scm-manager/' + env.pluginName + '.git'
       }
 
       // we have to configure maven after checkout,
