@@ -24,6 +24,8 @@ node {
        branchSources {
          github {
            id('github@scm-manager/' + pluginName) // IMPORTANT: use a constant and unique identifier
+           scanCredentialsId('cesmarvin-github')
+           checkoutCredentialsId('cesmarvin-github')
            repoOwner('scm-manager')
            repository(pluginName)
          }
