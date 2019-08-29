@@ -29,6 +29,12 @@ node {
            repoOwner('scm-manager')
            repository(pluginName)
          }
+         buildStrategies {
+           skipInitialBuildOnFirstBranchIndexing()
+         }
+         buildTags {
+           atMostDays("7")
+         }
       }
       orphanedItemStrategy {
         discardOldItems {
