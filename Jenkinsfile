@@ -11,6 +11,6 @@ node {
   }
 
   stage('Create Job') {
-    jobDsl sandbox: true, targets: 'plugin.groovy'
+    jobDsl targets: 'plugin.groovy'
   }
 }
