@@ -58,7 +58,7 @@ multibranchPipelineJob('scm-manager/plugins/' + pluginName) {
     pipelineBranchDefaultsProjectFactory {
       // The ID of the default Jenkinsfile to use from the global Config
       // File Management.
-      scriptId 'Jenkinsfile'
+      scriptId 'ScmPluginJenkinsfile'
 
       // If enabled, the configured default Jenkinsfile will be run within
       // a Groovy sandbox.
