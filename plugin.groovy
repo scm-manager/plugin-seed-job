@@ -10,6 +10,15 @@ folder('scm-manager/plugins') {
   description('SCM-Manager Plugins')
 }
 
+configFiles {
+  groovyScript {
+    id('ScmPluginJenkinsfile')
+    name('Jenkinsfile')
+    comment('Jenkinsfile for SCM-Manager Plugins')
+    content(readFileFromWorkspace('templates/Jenkinsfile'))
+  }
+}
+
 multibranchPipelineJob('scm-manager/plugins/' + pluginName) {
 
   branchSources {
