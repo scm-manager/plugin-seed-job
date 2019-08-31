@@ -22,25 +22,44 @@ node {
      multibranchPipelineJob('scm-manager/plugins/' + pluginName) {
        // SCM source or additional configuration
        branchSources {
-         github {
-           id('github@scm-manager/' + pluginName) // IMPORTANT: use a constant and unique identifier
-           scanCredentialsId('cesmarvin-github')
-           checkoutCredentialsId('cesmarvin-github')
-           repoOwner('scm-manager')
-           repository(pluginName)
-         }
-         buildStrategies {
-           skipInitialBuildOnFirstBranchIndexing()
-         }
-         buildTags {
-           atMostDays("7")
+         branchSource {
+           source {
+             github {
+               id('github@scm-manager/' + pluginName) // IMPORTANT: use a constant and unique identifier
+               credentialsId('cesmarvin-github')
+               repoOwner('scm-manager')
+               repository(pluginName)
+               configuredByUrl(true)
+               repositoryUrl("https://github.com/scm-manager/" + pluginName)
+             }
+           }
+           buildStrategies {
+             skipInitialBuildOnFirstBranchIndexing()
+             buildTags {
+               atLeastDays ''
+               atMostDays '7'
+             }
+           }
          }
       }
+
       orphanedItemStrategy {
         discardOldItems {
           numToKeep(5)
         }
       }
+
+      configure {
+        def traits = it / sources / data / 'jenkins.branch.BranchSource' / source / traits
+        traits << 'org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait' {
+          strategyId(1)
+        }
+        traits << 'org.jenkinsci.plugins.github__branch__source.OriginPullRequestDiscoveryTrait' {
+          strategyId(1)
+        }
+        traits << 'org.jenkinsci.plugins.github__branch__source.TagDiscoveryTrait'()
+      }
+
       factory {
         pipelineBranchDefaultsProjectFactory {
           // The ID of the default Jenkinsfile to use from the global Config
