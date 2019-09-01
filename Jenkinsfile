@@ -2,7 +2,7 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: "Name of the plugin")
+      string(name: 'pluginName', trim: true, description: pluginNameDescription())
     ])
   ])
 
@@ -11,10 +11,12 @@ node {
   }
 
   stage('Create Job') {
+    currentBuild.description = params.pluginName
     jobDsl targets: 'plugin.groovy'
   }
 
-  stage('Start Repository Scan') {
-    build job: "scm-manager/plugins/${params.pluginName}", wait: false
-  }
+}
+
+def pluginNameDescription() {
+  "Name of the plugin. Use 'none' to update the SCM Plugin Jenkinsfile only. Use 'all' to create a job for every plugin in the scm-manager github organization."
 }
