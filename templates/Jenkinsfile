@@ -81,14 +81,14 @@ node('docker') {
 }
 
 boolean isReleaseBuild() {
-  if (env.GIT_TAG) {
+  if (env.TAG_NAME) {
     return true
   }
   return false
 }
 
 void ensureValidRelease() {
-  String version = env.GIT_TAG
+  String version = env.TAG_NAME
   String mvnVersion = mavenVersion()
   String pluginVersion = pluginXmlVersion()
 
