@@ -43,23 +43,29 @@ node('docker') {
         }
       }
 
-      stage('Deployment') {
-        mvn.useDeploymentRepository([
-          id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
-          snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
-        ])
-        mvn.deployToNexusRepository()
-      }
+      if (isReleaseBuild()) {
 
-      stage('Plugin Center') {
-        if (!isSnapshotVersion()) {
+        stage('Assert valid release') {
+          ensureValidRelease()
+        }
+
+        stage('Deployment') {
+          mvn.useDeploymentRepository([
+            id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
+            snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
+          ])
+          mvn.deployToNexusRepository()
+        }
+
+        stage('Plugin Center') {
           dir("plugin-center") {
             git branch: 'master', changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
             writeReleaseDescriptor()
           }
-        } else {
-          echo "skip plugin center deployment"
         }
+
+      } else {
+        echo "skip deployment, we deploy only on release builds"
       }
 
     }
@@ -74,9 +80,37 @@ node('docker') {
   }
 }
 
-boolean isSnapshotVersion() {
+boolean isReleaseBuild() {
+  if (env.GIT_TAG) {
+    return true
+  }
+  return false
+}
+
+void ensureValidRelease() {
+  String version = env.GIT_TAG
+  String mvnVersion = mavenVersion()
+  String pluginVersion = pluginXmlVersion()
+
+  if (!version.equals(mvnVersion)) {
+    error("version specified in git tag ${version} is not equal to maven version ${}")
+  }
+
+  if (!version.equals(pluginVersion)) {
+    error("version specified in git tag ${version} is not equal to version ${}, which is specified in plugin.xml")
+  }
+}
+
+String mavenVersion() {
   def project = readMavenPom file: "${WORKSPACE}/pom.xml"
-  return project.version.endsWith("-SNAPSHOT")
+  return project.version
+}
+
+@NonCPS
+String pluginXmlVersion() {
+  def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
+  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
+  return pluginXml.information.version.text()
 }
 
 void writeReleaseDescriptor() {
@@ -139,7 +173,7 @@ Maven setupMavenBuild() {
   Maven mvn = new MavenInDocker(this, "3.5.2-jdk-8")
   mvn.additionalArgs += ' -Pci'
 
-  if (isSnapshotVersion()) {
+  if (isReleaseBuild()) {
     // Release starts javadoc, which takes very long, so do only for certain branches
     mvn.additionalArgs += ' -DperformRelease'
     // JDK8 is more strict, we should fix this before the next release. Right now, this is just not the focus, yet.
