@@ -93,11 +93,11 @@ void ensureValidRelease() {
   String pluginVersion = pluginXmlVersion()
 
   if (!version.equals(mvnVersion)) {
-    error("version specified in git tag ${version} is not equal to maven version ${}")
+    error("version specified in git tag ${version} is not equal to maven version ${mvnVersion}")
   }
 
   if (!version.equals(pluginVersion)) {
-    error("version specified in git tag ${version} is not equal to version ${}, which is specified in plugin.xml")
+    error("version specified in git tag ${version} is not equal to version ${pluginVersion}, which is specified in plugin.xml")
   }
 }
 
