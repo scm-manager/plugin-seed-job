@@ -106,7 +106,6 @@ String mavenVersion() {
   return project.version
 }
 
-@NonCPS
 String pluginXmlVersion() {
   def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
   def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
@@ -118,7 +117,7 @@ void writeReleaseDescriptor() {
   def project = readMavenPom file: "${WORKSPACE}/pom.xml"
   String filename = project.version.replace('.', '-') + ".yaml"
   def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
-  String pluginName = createPluginName(pluginXmlAsString)
+  String pluginName = env.JOB_NAME.split('/')[2]
 
   dir("src/plugins/${pluginName}/releases") {
     
@@ -138,12 +137,6 @@ ${createConditions(pluginXmlAsString)}
 
   }
 
-}
-
-@NonCPS
-String createPluginName(String pluginXmlAsString) {
-  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
-  return pluginXml.information.name.text()
 }
 
 @NonCPS
