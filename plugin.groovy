@@ -53,7 +53,7 @@ def createJob(String pluginName) {
 
         // If enabled, the configured default Jenkinsfile will be run within
         // a Groovy sandbox.
-        useSandbox true
+        useSandbox false
       }
     }
 
