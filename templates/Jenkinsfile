@@ -50,6 +50,9 @@ node('docker') {
         }
 
         stage('Deployment') {
+          // we need to deploy on a clean workspace, 
+          // because of a bug in the scm annotation processor
+          mvn "clean"
           mvn.useDeploymentRepository([
             id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
             snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
