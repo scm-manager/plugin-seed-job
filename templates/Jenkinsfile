@@ -153,7 +153,7 @@ void writeReleaseDescriptor() {
 @NonCPS
 def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
   def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
-  if (pluginXml.dependencies) {
+  if (pluginXml.dependencies.size() > 0) {
       def dependencies = []
       pluginXml.dependencies.children().each { dep -> 
         dependencies.add( dep.text() ) 
@@ -163,12 +163,12 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
       }
   }
 
-  if (pluginXml.conditions) {
+  if (pluginXml.conditions.size() > 0) {
     def conditions = [:]
-    if (pluginXml.conditions.'min-version') {
+    if (pluginXml.conditions.'min-version'.size() > 0) {
       conditions['min-version'] = pluginXml.conditions.'min-version'.text()
     }
-    if (pluginXml.conditions.os) {
+    if (pluginXml.conditions.os.size() > 0) {
       def osCondition = []
       pluginXml.conditions.os.children().each { os -> 
         osCondition.add(os.text())
@@ -177,7 +177,7 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
         conditions['os'] = osCondition
       }
     }
-    if (pluginXml.conditions.arch) {
+    if (pluginXml.conditions.arch.size() > 0) {
       conditions['arch'] = pluginXml.conditions.arch.text()
     }
 
