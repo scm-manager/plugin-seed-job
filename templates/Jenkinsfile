@@ -133,6 +133,10 @@ void writeReleaseDescriptor() {
     ]
 
     releaseDesc = appendDependeciesAndConditions(pluginXmlAsString, releaseDesc)
+
+    // writeYaml does not override files, so we have to delete it
+    sh "rm -f ${filename} || true"
+
     writeYaml charset: 'UTF-8', file: filename, data: releaseDesc
 
     sh "git add ${filename}"
