@@ -123,14 +123,18 @@ void writeReleaseDescriptor() {
   String pluginName = env.JOB_NAME.split('/')[2]
 
   dir("src/plugins/${pluginName}/releases") {
-    
-    writeFile encoding: 'UTF-8', file: filename, text: """plugin: ${pluginName}
-tag: ${project.version}
-date: ${getCurrentDate()}
-url: ${createDownloadUrl(project)}
-checksum: ${sha256sum}
-${createConditions(pluginXmlAsString)}
-  """
+
+    def releaseDesc = [
+      'plugin': pluginName,
+      'tag': project.version,
+      'date': getCurrentDate(),
+      'url': createDownloadUrl(project),
+      'checksum': sha256sum
+    ]
+
+    releaseDesc = appendDependeciesAndConditions(pluginXmlAsString, releaseDesc)
+    writeYaml charset: 'UTF-8', file: filename, data: releaseDesc
+
     sh "git add ${filename}"
     sh "git commit --author 'Jenkins ${pluginName} <ci@scm-manager.org>' -m '${pluginName}: release ${project.version}'"
     withCredentials([usernamePassword(credentialsId: 'scmmarvin-at-bitbucket', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
@@ -143,25 +147,43 @@ ${createConditions(pluginXmlAsString)}
 }
 
 @NonCPS
-String createConditions(String pluginXmlAsString) {
+String appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
   def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
-  String conditions = ""
+  if (pluginXml.dependencies) {
+      def dependencies = []
+      pluginXml.dependencies.children().each { dep -> 
+        dependencies.add( dep.text() ) 
+      }
+
+      if (dependencies.length > 0) {
+        releaseDesc['dependencies'] = dependencies
+      }
+  }
+
   if (pluginXml.conditions) {
-    conditions = "conditions:"
+    def conditions = [:]
     if (pluginXml.conditions.'min-version') {
-      conditions += "\n  minVersion: ${pluginXml.conditions.'min-version'.text()}"
+      conditions['min-version'] = pluginXml.conditions.'min-version'.text()
     }
     if (pluginXml.conditions.os) {
-      conditions += "\n  os:"
+      def osCondition = []
       pluginXml.conditions.os.children().each { os -> 
-        conditions += "\n  - ${os.text()}" 
+        osCondition.add(os.text())
+      }
+      if (osCondition.length > 0) {
+        conditions['os'] = osCondition
       }
     }
     if (pluginXml.conditions.arch) {
-      conditions += "\n  arch: ${pluginXml.conditions.arch.text()}"
+      conditions['arch'] = pluginXml.conditions.arch.text()
+    }
+
+    if (!conditions.isEmpty()) {
+      releaseDesc['conditions'] = conditions
     }
   }
-  return conditions
+
+  return releaseDesc
 }
 
 Maven setupMavenBuild() {
