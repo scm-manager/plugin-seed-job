@@ -147,7 +147,7 @@ void writeReleaseDescriptor() {
 }
 
 @NonCPS
-String appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
+def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
   def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
   if (pluginXml.dependencies) {
       def dependencies = []
