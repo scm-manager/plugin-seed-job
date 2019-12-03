@@ -154,8 +154,7 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
       pluginXml.dependencies.children().each { dep -> 
         dependencies.add( dep.text() ) 
       }
-
-      if (dependencies.length > 0) {
+      if (!dependencies.isEmpty()) {
         releaseDesc['dependencies'] = dependencies
       }
   }
@@ -170,7 +169,7 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
       pluginXml.conditions.os.children().each { os -> 
         osCondition.add(os.text())
       }
-      if (osCondition.length > 0) {
+      if (!osCondition.isEmpty()) {
         conditions['os'] = osCondition
       }
     }
