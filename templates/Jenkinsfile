@@ -191,7 +191,7 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
 
 Maven setupMavenBuild() {
   // Keep this version number in sync with .mvn/maven-wrapper.properties
-  Maven mvn = new MavenInDocker(this, "3.6.3-jdk-11")
+  Maven mvn = new MavenInDocker(this, "3.5.2-jdk-8")
   mvn.additionalArgs += ' -Pci'
 
   if (isReleaseBuild()) {
