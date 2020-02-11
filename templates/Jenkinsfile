@@ -62,7 +62,7 @@ node('docker') {
 
         stage('Plugin Center') {
           dir("plugin-center") {
-            git branch: 'master', changelog: false, poll: false, url: 'https://bitbucket.org/scm-manager/plugin-center.git'
+            git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/plugin-center.git'
             writeReleaseDescriptor()
           }
         }
@@ -141,9 +141,9 @@ void writeReleaseDescriptor() {
 
     sh "git add ${filename}"
     sh "git commit --author 'Jenkins ${pluginName} <ci@scm-manager.org>' -m '${pluginName}: release ${project.version}'"
-    withCredentials([usernamePassword(credentialsId: 'scmmarvin-at-bitbucket', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
+    withCredentials([usernamePassword(credentialsId: 'cesmarvin-github', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
       sh 'git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"'
-      sh "git push https://bitbucket.org/scm-manager/plugin-center.git HEAD:master"
+      sh "git push https://github.com/scm-manager/plugin-center.git HEAD:master"
     }
 
   }
