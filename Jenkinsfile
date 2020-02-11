@@ -2,7 +2,7 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: pluginNameDescription())
+      string(name: 'pluginName', trim: true, description: pluginNameDescription(), defaultValue: 'none')
     ])
   ])
 
