@@ -166,7 +166,7 @@ def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
   if (pluginXml.conditions.size() > 0) {
     def conditions = [:]
     if (pluginXml.conditions.'min-version'.size() > 0) {
-      conditions['min-version'] = pluginXml.conditions.'min-version'.text()
+      conditions['minVersion'] = pluginXml.conditions.'min-version'.text()
     }
     if (pluginXml.conditions.os.size() > 0) {
       def osCondition = []
