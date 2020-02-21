@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
 def createJob(String pluginName) {
-  multibranchPipelineJob('scm-manager/plugins/' + pluginName) {
+  multibranchPipelineJob('scm-manager-plugins/' + pluginName) {
 
     branchSources {
       branchSource {
@@ -59,15 +59,11 @@ def createJob(String pluginName) {
 
   }
 
-  queue('scm-manager/plugins/' + pluginName)
+  queue('scm-manager-plugins/' + pluginName)
 }
 
 def createFolders() {
-  folder('scm-manager') {
-    description('SCM-Manager')
-  }
-
-  folder('scm-manager/plugins') {
+  folder('scm-manager-plugins') {
     description('SCM-Manager Plugins')
   }
 }
