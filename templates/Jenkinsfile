@@ -117,7 +117,7 @@ void writeReleaseDescriptor() {
   def project = readMavenPom file: "${WORKSPACE}/pom.xml"
   String filename = project.version.replace('.', '-') + ".yaml"
   def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
-  String pluginName = env.JOB_NAME.split('/')[2]
+  String pluginName = env.JOB_NAME.split('/')[1]
 
   dir("src/plugins/${pluginName}/releases") {
 
