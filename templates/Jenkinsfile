@@ -1,10 +1,12 @@
 #!groovy
 
 // Keep the version in sync with the one used in pom.xml in order to get correct syntax completion.
-@Library('github.com/cloudogu/ces-build-lib@1542367')
+@Library('github.com/cloudogu/ces-build-lib@c079662')
 import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
+
+  integrationBranch = 'develop'
 
   properties([
     // Keep only the last 10 build to preserve space
@@ -14,11 +16,12 @@ node('docker') {
 
   timeout(activity: true, time: 20, unit: 'MINUTES') {
 
-    Git git = new Git(this)
+    Git git = new Git(this, 'cesmarvin-github')
 
     catchError {
 
       stage('Checkout') {
+        sh 'rm -rf plugin-center || true'
         checkout scm
       }
 
@@ -26,13 +29,36 @@ node('docker') {
       // because we read the pom during the maven setup
       Maven mvn = setupMavenBuild()
 
+      if (isReleaseBranch()) {
+        stage('Set Version') {
+          String releaseVersion = getReleaseVersion();
+          mvn.setVersion(releaseVersion);
+          mvn.call "sonia.scm.maven:smp-maven-plugin:fix-package-version"
+          git.add("pom.xml");
+          git.add("package.json");
+          git.commit("release version ${releaseVersion}", 'CES Marvin', 'cesmarvin@cloudogu.com')
+          // Delete local tag maybe it is leftover from previous builds
+          // TODO move to ces build lib
+          sh returnStatus: true, script: "git tag -d '${releaseVersion}'"
+          git.fetch()
+          // TODO move to ces build lib
+          sh 'git branch -D master || true'
+          git.checkout('master')
+          git.mergeFastForwardOnly(env.BRANCH_NAME)
+          // TODO: move to ces build lib
+          sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' tag -m 'release version ${releaseVersion}' ${releaseVersion}"
+        }
+      }
+
       stage('Build') {
-        mvn 'clean install -DskipTests'
+        mvn 'clean install sonia.scm.maven:smp-maven-plugin:write-release-descriptor -DreleaseDescriptor=target/release.yaml -DskipTests'
         archive 'target/*.smp'
       }
 
       stage('Unit Test') {
         mvn 'org.jacoco:jacoco-maven-plugin:0.8.5:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.5:report -Dmaven.test.failure.ignore=true'
+        // Archive Unit and integration test results, if any
+        junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
       }
 
       stage('SonarQube') {
@@ -43,28 +69,55 @@ node('docker') {
         }
       }
 
-      if (isReleaseBuild()) {
+      if ((isReleaseBranch() || isIntegrationBranch()) && isBuildSuccessful()) {
 
-        stage('Assert valid release') {
-          ensureValidRelease()
+        stage("Archive Artifacts") {
+          archive 'target/*.smp'
         }
 
         stage('Deployment') {
           // we need to deploy on a clean workspace, 
           // because of a bug in the scm annotation processor
-          mvn "clean"
+          // TODO Check whether necessary or not: mvn "clean"
           mvn.useDeploymentRepository([
             id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
             snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
           ])
           mvn.deployToNexusRepository()
         }
+      }
+
+      if (isReleaseBranch() && isBuildSuccessful()) {
+        stage("Push Tag") {
+          git.push('master')
+          git.push('--tags')
+        }
 
         stage('Plugin Center') {
+          String version = getReleaseVersion();
+
           dir("plugin-center") {
             git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/plugin-center.git'
-            writeReleaseDescriptor()
+            writeReleaseDescriptor(git, version)
           }
+        }
+
+        stage("Set Next Version") {
+          // TODO move to ces build lib
+          sh "git branch -D '${integrationBranch}' || true"
+          git.checkout(integrationBranch)
+          git.merge('master')
+          mvn.setVersionToNextMinorSnapshot()
+          // TODO Falls vorhanden, version in package.json anpassen mit SMP Plugin
+          mvn.call "sonia.scm.maven:smp-maven-plugin:fix-package-version"
+          git.add("pom.xml");
+          git.add("package.json");
+          git.commit('Prepare for next development iteration', 'CES Marvin', 'cesmarvin@cloudogu.com')
+          git.push(integrationBranch)
+        }
+
+        stage('Delete Release Branch') {
+          git.push(":${env.BRANCH_NAME}")
         }
 
       } else {
@@ -73,146 +126,52 @@ node('docker') {
 
     }
 
-    // Archive Unit and integration test results, if any
-    junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
 
     mailIfStatusChanged(git.commitAuthorEmail)
   }
 }
 
-boolean isReleaseBuild() {
-  if (env.TAG_NAME) {
-    return true
-  }
-  return false
+String integrationBranch
+
+boolean isReleaseBranch() {
+  return env.BRANCH_NAME.startsWith("release/");
 }
 
-void ensureValidRelease() {
-  String version = env.TAG_NAME
-  String mvnVersion = mavenVersion()
-  String pluginVersion = pluginXmlVersion()
-
-  if (!version.equals(mvnVersion)) {
-    error("version specified in git tag ${version} is not equal to maven version ${mvnVersion}")
-  }
-
-  if (!version.equals(pluginVersion)) {
-    error("version specified in git tag ${version} is not equal to version ${pluginVersion}, which is specified in plugin.xml")
-  }
+boolean isIntegrationBranch() {
+  return env.BRANCH_NAME.equals(integrationBranch);
 }
-
-String mavenVersion() {
-  def project = readMavenPom file: "${WORKSPACE}/pom.xml"
-  return project.version
+  
+String getReleaseVersion() {
+  return env.BRANCH_NAME.substring("release/".length());
 }
-
-String pluginXmlVersion() {
-  def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
-  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
-  return pluginXml.information.version.text()
-}
-
-void writeReleaseDescriptor() {
-  String sha256sum = getChecksum()
-  def project = readMavenPom file: "${WORKSPACE}/pom.xml"
-  String filename = project.version.replace('.', '-') + ".yaml"
-  def pluginXmlAsString = readFile "${env.WORKSPACE}/target/classes/META-INF/scm/plugin.xml"
+ 
+void writeReleaseDescriptor(def git, String version ) {
+  
+  String filename = version.replace('.', '-') + ".yaml"
+  def descriptorFile = "${env.WORKSPACE}/target/release.yaml"
   String pluginName = env.JOB_NAME.split('/')[1]
 
   dir("src/plugins/${pluginName}/releases") {
 
-    def releaseDesc = [
-      'plugin': pluginName,
-      'tag': project.version,
-      'date': getCurrentDate(),
-      'url': createDownloadUrl(project),
-      'checksum': sha256sum
-    ]
-
-    releaseDesc = appendDependeciesAndConditions(pluginXmlAsString, releaseDesc)
-
     // writeYaml does not override files, so we have to delete it
     sh "rm -f ${filename} || true"
+    sh "mv ${descriptorFile} ${filename}"
 
-    writeYaml charset: 'UTF-8', file: filename, data: releaseDesc
-
-    sh "git add ${filename}"
-    sh "git commit --author 'Jenkins ${pluginName} <ci@scm-manager.org>' -m '${pluginName}: release ${project.version}'"
-    withCredentials([usernamePassword(credentialsId: 'cesmarvin-github', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
-      sh 'git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"'
-      sh "git push https://github.com/scm-manager/plugin-center.git HEAD:master"
-    }
-
+    git.add(filename)
+    git.commit("${pluginName}: release ${version}", 'CES Marvin', 'cesmarvin@cloudogu.com')
+    git.push('HEAD:master')
   }
 
-}
-
-@NonCPS
-def appendDependeciesAndConditions(String pluginXmlAsString, def releaseDesc) {
-  def pluginXml = new XmlSlurper().parseText(pluginXmlAsString)
-  if (pluginXml.dependencies.size() > 0) {
-      def dependencies = []
-      pluginXml.dependencies.children().each { dep -> 
-        dependencies.add( dep.text() ) 
-      }
-      if (!dependencies.isEmpty()) {
-        releaseDesc['dependencies'] = dependencies
-      }
-  }
-
-  if (pluginXml.conditions.size() > 0) {
-    def conditions = [:]
-    if (pluginXml.conditions.'min-version'.size() > 0) {
-      conditions['minVersion'] = pluginXml.conditions.'min-version'.text()
-    }
-    if (pluginXml.conditions.os.size() > 0) {
-      def osCondition = []
-      pluginXml.conditions.os.children().each { os -> 
-        osCondition.add(os.text())
-      }
-      if (!osCondition.isEmpty()) {
-        conditions['os'] = osCondition
-      }
-    }
-    if (pluginXml.conditions.arch.size() > 0) {
-      conditions['arch'] = pluginXml.conditions.arch.text()
-    }
-
-    if (!conditions.isEmpty()) {
-      releaseDesc['conditions'] = conditions
-    }
-  }
-
-  return releaseDesc
 }
 
 Maven setupMavenBuild() {
   // Keep this version number in sync with .mvn/maven-wrapper.properties
-  Maven mvn = new MavenInDocker(this, "3.5.2-jdk-8")
-  mvn.additionalArgs += ' -Pci'
+  Maven mvn = new MavenWrapperInDocker(this, 'scmmanager/java-build:11.0.6_10')
 
-  if (isReleaseBuild()) {
-    // Release starts javadoc, which takes very long, so do only for certain branches
-    mvn.additionalArgs += ' -DperformRelease'
-    // JDK8 is more strict, we should fix this before the next release. Right now, this is just not the focus, yet.
-    mvn.additionalArgs += ' -Dmaven.javadoc.failOnError=false'
-  }
+  // Release starts javadoc, which takes very long, so do only for certain branches
+  mvn.additionalArgs += ' -DperformRelease'
+  // JDK8 is more strict, we should fix this before the next release. Right now, this is just not the focus, yet.
+  mvn.additionalArgs += ' -Dmaven.javadoc.failOnError=false'
+
   return mvn
-}
-
-
-String getCurrentDate() {
-  return new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
-}
-
-String getChecksum() {
-  return sh(returnStdout: true, script: "sha256sum ${WORKSPACE}/target/*.smp").trim().split("\\s+")[0]
-}
-
-String createDownloadUrl(def project) {
-  String groupId = project.groupId ? project.groupId : project.parent.groupId
-  groupId = groupId.replace('.', '/')
-  String url = "https://maven.scm-manager.org/nexus/content/repositories/plugin-releases/"
-  url += groupId + "/" + project.artifactId + "/" + project.version + "/" + project.artifactId + "-" + project.version + ".smp"
-  return url
 }
