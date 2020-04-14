@@ -14,6 +14,15 @@ def createJob(String pluginName) {
             repository(pluginName)
             configuredByUrl(true)
             repositoryUrl("https://github.com/scm-manager/" + pluginName)
+            traits {
+              gitHubBranchDiscovery {
+                strategyId(1)
+              }
+              gitHubPullRequestDiscovery {
+                strategyId(1)
+              }
+              localBranchTrait()
+            }
           }
         }
 
@@ -31,19 +40,6 @@ def createJob(String pluginName) {
     orphanedItemStrategy {
       discardOldItems {
         numToKeep(5)
-      }
-    }
-
-    configure {
-      def traits = it / sources / data / 'jenkins.branch.BranchSource' / source / traits
-      traits << 'org.jenkinsci.plugins.github__branch__source.BranchDiscoveryTrait' {
-        strategyId(1)
-      }
-      traits << 'org.jenkinsci.plugins.github__branch__source.OriginPullRequestDiscoveryTrait' {
-        strategyId(1)
-      }
-      traits << 'jenkins.plugins.git.traits.LocalBranchTrait' {
-        localBranch('**')
       }
     }
 
