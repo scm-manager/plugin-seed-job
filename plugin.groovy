@@ -42,6 +42,9 @@ def createJob(String pluginName) {
       traits << 'org.jenkinsci.plugins.github__branch__source.OriginPullRequestDiscoveryTrait' {
         strategyId(1)
       }
+      traits << 'jenkins.plugins.git.traits.LocalBranchTrait' {
+        localBranch('**')
+      }
     }
 
     factory {
