@@ -33,16 +33,17 @@ node('docker') {
         stage('Set Version') {
           String releaseVersion = getReleaseVersion();
           mvn.setVersion(releaseVersion);
-          mvn.call "sonia.scm.maven:smp-maven-plugin:fix-package-version"
+          mvn "sonia.scm.maven:smp-maven-plugin:fix-package-version"
           git.add("pom.xml");
-          git.add("package.json");
+          // TODO Move to ces build lib
+          sh returnStatus: true, script: 'git add package.json'
           git.commit("release version ${releaseVersion}", 'CES Marvin', 'cesmarvin@cloudogu.com')
           // Delete local tag maybe it is leftover from previous builds
           // TODO move to ces build lib
           sh returnStatus: true, script: "git tag -d '${releaseVersion}'"
           git.fetch()
           // TODO move to ces build lib
-          sh 'git branch -D master || true'
+          sh returnStatus: true, script: 'git branch -D master'
           git.checkout('master')
           git.mergeFastForwardOnly(env.BRANCH_NAME)
           // TODO: move to ces build lib
@@ -51,8 +52,7 @@ node('docker') {
       }
 
       stage('Build') {
-        mvn 'clean install sonia.scm.maven:smp-maven-plugin:write-release-descriptor -DreleaseDescriptor=target/release.yaml -DskipTests'
-        archive 'target/*.smp'
+        mvn 'clean package sonia.scm.maven:smp-maven-plugin:write-release-descriptor -DreleaseDescriptor=target/release.yaml -DskipTests'
       }
 
       stage('Unit Test') {
@@ -104,14 +104,14 @@ node('docker') {
 
         stage("Set Next Version") {
           // TODO move to ces build lib
-          sh "git branch -D '${integrationBranch}' || true"
+          sh returnStatus: true, script: "git branch -D '${integrationBranch}'"
           git.checkout(integrationBranch)
           git.merge('master')
           mvn.setVersionToNextMinorSnapshot()
           // TODO Falls vorhanden, version in package.json anpassen mit SMP Plugin
-          mvn.call "sonia.scm.maven:smp-maven-plugin:fix-package-version"
+          mvn 'sonia.scm.maven:smp-maven-plugin:fix-package-version'
           git.add("pom.xml");
-          git.add("package.json");
+          sh returnStatus: true, script: 'git add package.json'
           git.commit('Prepare for next development iteration', 'CES Marvin', 'cesmarvin@cloudogu.com')
           git.push(integrationBranch)
         }
@@ -154,7 +154,7 @@ void writeReleaseDescriptor(def git, String version ) {
   dir("src/plugins/${pluginName}/releases") {
 
     // writeYaml does not override files, so we have to delete it
-    sh "rm -f ${filename} || true"
+    sh returnStatus: true, script: "rm -f ${filename}"
     sh "mv ${descriptorFile} ${filename}"
 
     git.add(filename)
