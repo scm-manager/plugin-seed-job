@@ -18,10 +18,10 @@ def createJob(String pluginName) {
         }
 
         buildStrategies {
-          skipInitialBuildOnFirstBranchIndexing()
-          buildTags {
-            atLeastDays ''
-            atMostDays '7'
+          buildRegularBranches()
+          buildChangeRequests {
+            ignoreTargetOnlyChanges true
+            ignoreUntrustedChanges true
           }
         }
 
