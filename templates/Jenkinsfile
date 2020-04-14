@@ -52,7 +52,7 @@ node('docker') {
       }
 
       stage('Build') {
-        mvn 'clean package sonia.scm.maven:smp-maven-plugin:write-release-descriptor -DreleaseDescriptor=target/release.yaml -DskipTests'
+        mvn 'clean package -DskipTests'
       }
 
       stage('Unit Test') {
