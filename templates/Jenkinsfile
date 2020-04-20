@@ -33,7 +33,7 @@ node('docker') {
         stage('Set Version') {
           String releaseVersion = getReleaseVersion();
           mvn.setVersion(releaseVersion);
-          mvn "sonia.scm.maven:smp-maven-plugin:fix-package-version"
+          mvn "smp:fix"
           git.add("pom.xml");
           // TODO Move to ces build lib
           sh returnStatus: true, script: 'git add package.json'
