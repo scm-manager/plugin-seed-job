@@ -109,7 +109,7 @@ node('docker') {
           git.merge('master')
           mvn.setVersionToNextMinorSnapshot()
           // TODO Falls vorhanden, version in package.json anpassen mit SMP Plugin
-          mvn 'sonia.scm.maven:smp-maven-plugin:fix-package-version'
+          mvn 'smp:fix'
           git.add("pom.xml");
           sh returnStatus: true, script: 'git add package.json'
           git.commit('Prepare for next development iteration', 'CES Marvin', 'cesmarvin@cloudogu.com')
