@@ -80,8 +80,8 @@ node('docker') {
           // because of a bug in the scm annotation processor
           mvn "clean"
           mvn.useDeploymentRepository([
-            id: 'maven.scm-manager.org', url: 'https://maven.scm-manager.org/nexus', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
-            snapshotRepository: '/content/repositories/plugin-snapshots', releaseRepository: '/content/repositories/plugin-releases'
+            id: 'packages.scm-manager.org', url: 'https://packages.scm-manager.org/', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
+            snapshotRepository: '/repository/plugin-snapshots/', releaseRepository: '/repository/plugin-releases/'
           ])
           mvn.deployToNexusRepository()
         }
