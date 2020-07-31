@@ -64,9 +64,6 @@ node('docker') {
       stage('SonarQube') {
         def sonarQube = new SonarCloud(this, [sonarQubeEnv: 'sonarcloud.io-scm'])
         sonarQube.analyzeWith(mvn)
-        if (!sonarQube.waitForQualityGateWebhookToBeCalled()) {
-          currentBuild.result ='UNSTABLE'
-        }
       }
 
       if ((isReleaseBranch() || isIntegrationBranch()) && isBuildSuccessful()) {
