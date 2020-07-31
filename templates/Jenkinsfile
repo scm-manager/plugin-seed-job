@@ -89,7 +89,7 @@ node('docker') {
           String version = getReleaseVersion();
 
           dir("plugin-center") {
-            git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/plugin-center.git'
+            git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/website.git'
             writeReleaseDescriptor(git, version)
           }
         }
@@ -138,12 +138,11 @@ String getReleaseVersion() {
 }
  
 void writeReleaseDescriptor(def git, String version ) {
-  
   String filename = version.replace('.', '-') + ".yaml"
   def descriptorFile = "${env.WORKSPACE}/target/release.yaml"
   String pluginName = env.JOB_NAME.split('/')[1]
 
-  dir("src/plugins/${pluginName}/releases") {
+  dir("content/plugins/${pluginName}/releases") {
 
     // writeYaml does not override files, so we have to delete it
     sh returnStatus: true, script: "rm -f ${filename}"
