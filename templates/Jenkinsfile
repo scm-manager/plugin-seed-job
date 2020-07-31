@@ -61,14 +61,6 @@ node('docker') {
         junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
       }
 
-      stage('SonarQube') {
-        def sonarQube = new SonarCloud(this, [sonarQubeEnv: 'sonarcloud.io-scm'])
-        sonarQube.analyzeWith(mvn)
-        if (!sonarQube.waitForQualityGateWebhookToBeCalled()) {
-          currentBuild.result ='UNSTABLE'
-        }
-      }
-
       if ((isReleaseBranch() || isIntegrationBranch()) && isBuildSuccessful()) {
 
         stage("Archive Artifacts") {
