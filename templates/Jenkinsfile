@@ -73,14 +73,24 @@ node('docker') {
         }
 
         stage('Deployment') {
-          // we need to deploy on a clean workspace, 
-          // because of a bug in the scm annotation processor
-          mvn "clean"
-          mvn.useDeploymentRepository([
-            id: 'packages.scm-manager.org', url: 'https://packages.scm-manager.org/', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
-            snapshotRepository: '/repository/plugin-snapshots/', releaseRepository: '/repository/plugin-releases/'
-          ])
-          mvn.deployToNexusRepository()
+          // credentials are required for frontend deployment to npmjs
+          withCredentials([string(credentialsId: 'cesmarvin_npm_token', variable: 'NPM_TOKEN')]) {
+            writeFile encoding: 'UTF-8', file: '.npmrc', text: "//registry.npmjs.org/:_authToken='${NPM_TOKEN}'"
+            writeFile encoding: 'UTF-8', file: '.yarnrc', text: '''
+              registry "https://registry.npmjs.org/"
+              always-auth true
+              email cesmarvin@cloudogu.com
+            '''.trim()
+
+            // we need to deploy on a clean workspace,
+            // because of a bug in the scm annotation processor
+            mvn "clean"
+            mvn.useDeploymentRepository([
+              id                : 'packages.scm-manager.org', url: 'https://packages.scm-manager.org/', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
+              snapshotRepository: '/repository/plugin-snapshots/', releaseRepository: '/repository/plugin-releases/'
+            ])
+            mvn.deployToNexusRepository()
+          }
         }
       }
 
@@ -137,11 +147,11 @@ boolean isReleaseBranch() {
 boolean isIntegrationBranch() {
   return env.BRANCH_NAME.equals(integrationBranch);
 }
-  
+
 String getReleaseVersion() {
   return env.BRANCH_NAME.substring("release/".length());
 }
- 
+
 void writeReleaseDescriptor(def git, String version ) {
   String filename = version.replace('.', '-') + ".yaml"
   def descriptorFile = "${env.WORKSPACE}/target/release.yaml"
