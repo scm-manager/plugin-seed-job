@@ -89,7 +89,7 @@ node('docker') {
               id                : 'packages.scm-manager.org', url: 'https://packages.scm-manager.org/', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
               snapshotRepository: '/repository/plugin-snapshots/', releaseRepository: '/repository/plugin-releases/'
             ])
-            mvn.deployToNexusRepository()
+            mvn.deployToNexusRepository("deploy")
           }
         }
       }
