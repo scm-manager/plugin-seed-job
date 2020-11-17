@@ -37,7 +37,7 @@ node('docker') {
           git.add("pom.xml");
           // TODO Move to ces build lib
           sh returnStatus: true, script: 'git add package.json'
-          git.commit("release version ${releaseVersion}", 'CES Marvin', 'cesmarvin@cloudogu.com')
+          git.commit("release version ${releaseVersion}", 'SCM-Team', 'scm-team@cloudogu.com')
           // Delete local tag maybe it is leftover from previous builds
           // TODO move to ces build lib
           sh returnStatus: true, script: "git tag -d '${releaseVersion}'"
@@ -47,7 +47,7 @@ node('docker') {
           git.checkout('master')
           git.mergeFastForwardOnly(env.BRANCH_NAME)
           // TODO: move to ces build lib
-          sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' tag -m 'release version ${releaseVersion}' ${releaseVersion}"
+          sh "git -c user.name='SCM-Team' -c user.email='scm-team@cloudogu.com' tag -m 'release version ${releaseVersion}' ${releaseVersion}"
         }
       }
 
@@ -119,7 +119,7 @@ node('docker') {
           mvn 'smp:fix'
           git.add("pom.xml");
           sh returnStatus: true, script: 'git add package.json'
-          git.commit('Prepare for next development iteration', 'CES Marvin', 'cesmarvin@cloudogu.com')
+          git.commit('Prepare for next development iteration', 'SCM-Team', 'scm-team@cloudogu.com')
           git.push(integrationBranch)
         }
 
@@ -164,7 +164,7 @@ void writeReleaseDescriptor(def git, String version ) {
     sh "mv ${descriptorFile} ${filename}"
 
     git.add(filename)
-    git.commit("${pluginName}: release ${version}", 'CES Marvin', 'cesmarvin@cloudogu.com')
+    git.commit("${pluginName}: release ${version}", 'SCM-Team', 'scm-team@cloudogu.com')
     git.push('HEAD:master')
   }
 
