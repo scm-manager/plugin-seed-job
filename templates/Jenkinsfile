@@ -1,183 +1,333 @@
 #!groovy
+pipeline {
 
-// Keep the version in sync with the one used in pom.xml in order to get correct syntax completion.
-@Library('github.com/cloudogu/ces-build-lib@f32480c')
-import com.cloudogu.ces.cesbuildlib.*
+  agent {
+    docker {
+      image 'scmmanager/java-build:11.0.9_11.1'
+      label 'docker'
+    }
+  }
 
-node('docker') {
+  environment {
+    HOME = "${env.WORKSPACE}"
+    SONAR_USER_HOME = "${env.WORKSPACE}/.sonar"
+  }
 
-  integrationBranch = 'develop'
+  stages {
 
-  properties([
-    // Keep only the last 10 build to preserve space
-    buildDiscarder(logRotator(numToKeepStr: '10')),
-    disableConcurrentBuilds()
-  ])
-
-  timeout(activity: true, time: 20, unit: 'MINUTES') {
-
-    Git git = new Git(this, 'cesmarvin-github')
-
-    catchError {
-
-      stage('Checkout') {
-        sh 'rm -rf plugin-center || true'
-        checkout scm
-      }
-
-      // we have to configure maven after checkout,
-      // because we read the pom during the maven setup
-      Maven mvn = setupMavenBuild()
-
-      if (isReleaseBranch()) {
-        stage('Set Version') {
-          String releaseVersion = getReleaseVersion();
-          mvn.setVersion(releaseVersion);
-          mvn "smp:fix"
-          git.add("pom.xml");
-          // TODO Move to ces build lib
-          sh returnStatus: true, script: 'git add package.json'
-          git.commit("release version ${releaseVersion}", 'SCM-Team', 'scm-team@cloudogu.com')
-          // Delete local tag maybe it is leftover from previous builds
-          // TODO move to ces build lib
-          sh returnStatus: true, script: "git tag -d '${releaseVersion}'"
-          git.fetch()
-          // TODO move to ces build lib
-          sh returnStatus: true, script: 'git branch -D master'
-          git.checkout('master')
-          git.mergeFastForwardOnly(env.BRANCH_NAME)
-          // TODO: move to ces build lib
-          sh "git -c user.name='SCM-Team' -c user.email='scm-team@cloudogu.com' tag -m 'release version ${releaseVersion}' ${releaseVersion}"
-        }
-      }
-
-      stage('Build') {
-        mvn 'clean package -DskipTests'
-      }
-
-      stage('Unit Test') {
-        mvn 'org.jacoco:jacoco-maven-plugin:0.8.5:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.5:report -Dmaven.test.failure.ignore=true'
-        // Archive Unit and integration test results, if any
-        junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
-      }
-
-      stage('SonarQube') {
-        def sonarQube = new SonarCloud(this, [sonarQubeEnv: 'sonarcloud.io-scm'])
-        sonarQube.analyzeWith(mvn)
-      }
-
-      if ((isReleaseBranch() || isIntegrationBranch()) && isBuildSuccessful()) {
-
-        stage("Archive Artifacts") {
-          archive 'target/*.smp'
-        }
-
-        stage('Deployment') {
-          // credentials are required for frontend deployment to npmjs
-          withCredentials([string(credentialsId: 'cesmarvin_npm_token', variable: 'NPM_TOKEN')]) {
-            writeFile encoding: 'UTF-8', file: '.npmrc', text: "//registry.npmjs.org/:_authToken='${NPM_TOKEN}'"
-            writeFile encoding: 'UTF-8', file: '.yarnrc', text: '''
-              registry "https://registry.npmjs.org/"
-              always-auth true
-              email cesmarvin@cloudogu.com
-            '''.trim()
-
-            // we need to deploy on a clean workspace,
-            // because of a bug in the scm annotation processor
-            mvn "clean"
-            mvn.useDeploymentRepository([
-              id                : 'packages.scm-manager.org', url: 'https://packages.scm-manager.org/', credentialsId: 'maven.scm-manager.org', type: 'Configurable',
-              snapshotRepository: '/repository/plugin-snapshots/', releaseRepository: '/repository/plugin-releases/'
-            ])
-            mvn.deployToNexusRepository("deploy")
+    stage('Prepare build') {
+      steps {
+        script {
+          if (fileExists('build.gradle')) {
+            buildTool = new Gradle(this)
+          } else {
+            buildTool = new Maven(this)
           }
         }
       }
-
-      if (isReleaseBranch() && isBuildSuccessful()) {
-        stage("Push Tag") {
-          git.push('master')
-          git.push('--tags')
-        }
-
-        stage('Plugin Center') {
-          String version = getReleaseVersion();
-
-          dir("plugin-center") {
-            git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/website.git'
-            writeReleaseDescriptor(git, version)
-          }
-        }
-
-        stage("Set Next Version") {
-          // TODO move to ces build lib
-          sh returnStatus: true, script: "git branch -D '${integrationBranch}'"
-          git.checkout(integrationBranch)
-          git.merge('master')
-          mvn.setVersionToNextMinorSnapshot()
-          // TODO Falls vorhanden, version in package.json anpassen mit SMP Plugin
-          mvn 'smp:fix'
-          git.add("pom.xml");
-          sh returnStatus: true, script: 'git add package.json'
-          git.commit('Prepare for next development iteration', 'SCM-Team', 'scm-team@cloudogu.com')
-          git.push(integrationBranch)
-        }
-
-        stage('Delete Release Branch') {
-          git.push(":${env.BRANCH_NAME}")
-        }
-
-      } else {
-        echo "skip deployment, we deploy only on release builds"
-      }
-
     }
 
+    stage('Set Version') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        // read version from brach, set it and commit it
+        script {
+          buildTool.setVersion(releaseVersion)
+        }
+        commit "release version ${releaseVersion}"
 
-    mailIfStatusChanged(git.commitAuthorEmail)
+        // fetch all remotes from origin
+        sh 'git config "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh 'git fetch --all'
+
+        // checkout, reset and merge
+        sh 'git checkout master'
+        sh 'git reset --hard origin/master'
+        sh "git merge --ff-only ${env.BRANCH_NAME}"
+
+        // set tag
+        tag releaseVersion
+      }
+    }
+
+    stage('Build') {
+      steps {
+        script {
+          buildTool.build()
+        }
+      }
+    }
+
+    stage('Check') {
+      steps {
+        script {
+          buildTool.check()
+        }
+      }
+    }
+
+    stage('SonarQube') {
+      steps {
+        // TODO we have to fetch the integration branch
+        script {
+          buildTool.sonarQube()
+        }
+      }
+    }
+
+    stage('Deployment') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        withYarnAuth('cesmarvin_npm_token') {
+          script {
+            buildTool.deploy()
+          }
+        }
+      }
+      post { 
+        always {
+          sh "rm -f settings.xml .npmrc .yarnrc || true"
+        }
+      }
+    }
+
+    stage('Push Tag') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        // push changes back to remote repository
+        authGit 'cesmarvin-github', 'push origin master --tags'
+        authGit 'cesmarvin-github', 'push origin --tags'
+      }
+    }
+
+    stage('Plugin Center') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        sh 'rm -rf plugin-center || true'
+        sh 'mkdir plugin-center'
+        dir("plugin-center") {
+          git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/website.git'
+          script {
+            String filename = releaseVersion.replace('.', '-') + ".yaml"
+            String pluginName = env.JOB_NAME.split('/')[1]
+            dir("content/plugins/${pluginName}/releases") {
+              sh "mv ${buildTool.releaseDescriptorPath()} ${filename}"
+              sh "git add ${filename}"
+              commit "${pluginName}: release ${releaseVersion}"
+              authGit 'cesmarvin-github', 'push origin HEAD:master'
+            }
+          }
+        }
+      }
+    }
+
+    stage('Set Next Version') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        sh returnStatus: true, script: "git branch -D develop"
+        sh "git checkout develop"
+        sh "git merge master"
+        script {
+          buildTool.setVersionToNextSnapshot()
+        }
+
+        commit 'Prepare for next development iteration'
+        authGit 'cesmarvin-github', 'push origin develop'
+      }
+    }
+
+    stage('Delete Release Branch') {
+      when {
+        branch pattern: 'release/*', comparator: 'GLOB'
+      }
+      steps {
+        authGit 'cesmarvin-github', "push origin :${env.BRANCH_NAME}"
+      }
+    }
+
   }
 }
 
-String integrationBranch
-
-boolean isReleaseBranch() {
-  return env.BRANCH_NAME.startsWith("release/");
-}
-
-boolean isIntegrationBranch() {
-  return env.BRANCH_NAME.equals(integrationBranch);
-}
+BuildTool buildTool
 
 String getReleaseVersion() {
   return env.BRANCH_NAME.substring("release/".length());
 }
 
-void writeReleaseDescriptor(def git, String version ) {
-  String filename = version.replace('.', '-') + ".yaml"
-  def descriptorFile = "${env.WORKSPACE}/target/release.yaml"
-  String pluginName = env.JOB_NAME.split('/')[1]
+void commit(String message) {
+  sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' commit -m '${message}'"
+}
 
-  dir("content/plugins/${pluginName}/releases") {
+void tag(String version) {
+  String message = "release version ${version}"
+  sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' tag -m '${message}' ${version}"
+}
 
-    // writeYaml does not override files, so we have to delete it
-    sh returnStatus: true, script: "rm -f ${filename}"
-    sh "mv ${descriptorFile} ${filename}"
+void withYarnAuth(String credentials, Closure<Void> closure) {
+  withCredentials([string(credentialsId: credentials, variable: 'NPM_TOKEN')]) {
+    writeFile encoding: 'UTF-8', file: '.npmrc', text: "//registry.npmjs.org/:_authToken='${NPM_TOKEN}'"
+    writeFile encoding: 'UTF-8', file: '.yarnrc', text: '''
+      registry "https://registry.npmjs.org/"
+      always-auth true
+      email cesmarvin@cloudogu.com
+    '''.trim()
 
-    git.add(filename)
-    git.commit("${pluginName}: release ${version}", 'SCM-Team', 'scm-team@cloudogu.com')
-    git.push('HEAD:master')
+    closure.call()
+  }
+}
+
+void authGit(String credentials, String command) {
+  withCredentials([
+    usernamePassword(credentialsId: credentials, usernameVariable: 'AUTH_USR', passwordVariable: 'AUTH_PSW')
+  ]) {
+    sh "git -c credential.helper=\"!f() { echo username='\$AUTH_USR'; echo password='\$AUTH_PSW'; }; f\" ${command}"
+  }
+}
+
+interface BuildTool {
+  void setVersion(String version)
+  void check()
+  void build()
+  void sonarQube()
+  void deploy()
+  String releaseDescriptorPath()
+  void setVersionToNextSnapshot()
+}
+
+class Gradle implements BuildTool {
+
+  def script
+
+  Gradle(def script) {
+    this.script = script
+  }
+
+  void setVersion(String version) {
+    gradle "setVersion --newVersion=${version}"
+    gradle 'fix'
+    script.sh 'git add gradle.properties package.json'
+  }
+
+  void check() {
+    gradle 'check'
+    // update timestamp to avoid rerun tests again and fix junit-plugin:
+    // ERROR: Test reports were found but none of them are new
+    script.sh 'touch build/test-results/*/*.xml || true'
+    script.junit allowEmptyResults: true, testResults: 'build/test-results/*/*.xml'
+  }
+
+  void build() {
+    gradle 'build -xtest'
+    script.archiveArtifacts artifacts: 'build/libs/*.smp'
+  }
+
+  void sonarQube(){
+    script.withSonarQubeEnv('sonarcloud.io-scm') {
+      String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
+      if (script.env.BRANCH_NAME != "master") {
+        sonar += " -Dsonar.branch.target=master"
+      }
+      gradle sonar
+    }
+  }
+
+  void deploy() {
+    script.withCredentials([script.usernamePassword(credentialsId: 'maven.scm-manager.org', passwordVariable: 'serverPassword', usernameVariable: 'serverUsername')]) {
+      gradle "publish -PpackagesScmManagerUsername=${script.env.serverUsername} -PpackagesScmManagerPassword=${script.env.serverPassword}"
+    }
+  }
+
+  String releaseDescriptorPath() {
+    return "${script.env.WORKSPACE}/build/libs/release.yaml"
+  }
+
+  void setVersionToNextSnapshot() {
+    gradle 'setVersionToNextSnapshot'
+    gradle 'fix'
+    script.sh 'git add gradle.properties package.json'
+  }
+
+  void gradle(String command) {
+    script.sh "./gradlew ${command}"
   }
 
 }
 
-Maven setupMavenBuild() {
-  // Keep this version number in sync with .mvn/maven-wrapper.properties
-  Maven mvn = new MavenWrapperInDocker(this, 'scmmanager/java-build:11.0.6_10')
+class Maven implements BuildTool {
 
-  // Release starts javadoc, which takes very long, so do only for certain branches
-  mvn.additionalArgs += ' -DperformRelease'
-  // JDK8 is more strict, we should fix this before the next release. Right now, this is just not the focus, yet.
-  mvn.additionalArgs += ' -Dmaven.javadoc.failOnError=false'
+  def script
 
-  return mvn
+  Maven(def script) {
+    this.script = script
+  }
+
+  void setVersion(String version) {
+    mvn "versions:set -DgenerateBackupPoms=false -DnewVersion=${version}"
+    mvn 'smp:fix'
+    script.sh 'git add pom.xml package.json'
+  }
+
+  void check() {
+    mvn 'clean org.jacoco:jacoco-maven-plugin:0.8.5:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.5:report -Dmaven.test.failure.ignore=true'
+    // Archive Unit and integration test results, if any
+    script.junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
+  }
+
+  void build() {
+    mvn 'clean package -DskipTests'
+    script.archiveArtifacts 'target/*.smp'
+  }
+
+  void sonarQube(){
+    script.withSonarQubeEnv('sonarcloud.io-scm') {
+      String sonar = "${script.env.SONAR_MAVEN_GOAL} -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
+      if (script.env.BRANCH_NAME != "master") {
+        sonar += " -Dsonar.branch.target=master"
+      }
+      mvn sonar
+    }
+  }
+
+  void deploy() {
+    script.withCredentials([script.usernamePassword(credentialsId: 'maven.scm-manager.org', passwordVariable: 'serverPassword', usernameVariable: 'serverUsername')]) {
+      script.writeFile file: ".m2/settings.xml", text: """
+      <settings>
+        <servers>
+          <server>
+            <id>packages.scm-manager.org</id>
+            <username>${script.env.serverUsername}</username>
+            <password>${script.env.serverPassword}</password>
+          </server>
+        </servers>
+      </settings>
+      """
+    }
+    
+    mvn '-DskipTests -DaltReleaseDeploymentRepository=packages.scm-manager.org::default::https://packages.scm-manager.org/repository/plugin-releases/ -DaltSnapshotDeploymentRepository=packages.scm-manager.org::default::https://packages.scm-manager.org/repository/plugin-snapshots/ -s .m2/settings.xml deploy'
+  }
+
+  void mvn(String command) {
+    script.sh "./mvnw --batch-mode -U -e  -DperformRelease -Dlicense.useDefaultExcludes=true -Dmaven.javadoc.failOnError=false ${command}"
+  }
+
+  String releaseDescriptorPath() {
+    return "${script.env.WORKSPACE}/target/release.yaml"
+  }
+
+  void setVersionToNextSnapshot() {
+    mvn "build-helper:parse-version versions:set -DgenerateBackupPoms=false -DnewVersion='\${parsedVersion.majorVersion}.\${parsedVersion.nextMinorVersion}.0-SNAPSHOT'"
+    mvn 'smp:fix'
+    script.sh "git add pom.xml package.json"
+  }
+
 }
