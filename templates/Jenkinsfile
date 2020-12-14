@@ -70,7 +70,8 @@ pipeline {
 
     stage('SonarQube') {
       steps {
-        // TODO we have to fetch the integration branch
+        sh 'git config "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh 'git fetch origin master'
         script {
           buildTool.sonarQube()
         }
