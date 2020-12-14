@@ -11,8 +11,12 @@ node {
   }
 
   stage('Create Job') {
-    currentBuild.description = params.pluginName
-    jobDsl targets: 'plugin.groovy'
+    if (env.BRANCH_NAME == 'master') {
+      currentBuild.description = params.pluginName
+      jobDsl targets: 'plugin.groovy'
+    } else {
+      echo 'skip, executing job dsl in order to avoid bringing an unfinished feature live.'
+    }
   }
 
 }
