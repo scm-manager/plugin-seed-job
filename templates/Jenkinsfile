@@ -256,7 +256,8 @@ class Gradle implements BuildTool {
     // update timestamp to avoid rerun tests again and fix junit-plugin:
     // ERROR: Test reports were found but none of them are new
     script.sh 'touch build/test-results/*/*.xml || true'
-    script.junit allowEmptyResults: true, testResults: 'build/test-results/*/*.xml'
+    script.sh 'touch build/jest-reports/TEST-*.xml || true'
+    script.junit allowEmptyResults: true, testResults: 'build/test-results/*/*.xml,build/jest-reports/TEST-*.xml'
   }
 
   void build() {
