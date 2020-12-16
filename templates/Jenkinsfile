@@ -167,6 +167,24 @@ pipeline {
     }
 
   }
+  
+  post {
+    failure {
+      mail to: "scm-team@cloudogu.com",
+        subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
+        body: "Check console output at ${BUILD_URL} to view the results."
+    }
+    unstable {
+      mail to: "scm-team@cloudogu.com",
+        subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
+        body: "Check console output at ${BUILD_URL} to view the results."
+    }
+    fixed {
+      mail to: "scm-team@cloudogu.com",
+        subject: "Jenkins Job ${JOB_NAME} - Is back to normal with Build #${BUILD_NUMBER}",
+        body: "Check console output at ${BUILD_URL} to view the results."
+    }
+  }
 }
 
 BuildTool buildTool
