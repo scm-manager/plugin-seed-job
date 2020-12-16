@@ -220,7 +220,7 @@ class Gradle implements BuildTool {
   }
 
   void check() {
-    gradle 'check'
+    gradle 'check -PignoreTestFailures=true'
     // update timestamp to avoid rerun tests again and fix junit-plugin:
     // ERROR: Test reports were found but none of them are new
     script.sh 'touch build/test-results/*/*.xml || true'
