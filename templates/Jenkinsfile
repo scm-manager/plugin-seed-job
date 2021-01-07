@@ -44,7 +44,7 @@ pipeline {
         commit "release version ${releaseVersion}"
 
         // fetch all remotes from origin
-        sh 'git config "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
         sh 'git fetch --all'
 
         // checkout, reset and merge
@@ -75,7 +75,7 @@ pipeline {
 
     stage('SonarQube') {
       steps {
-        sh 'git config "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
         sh 'git fetch origin master'
         script {
           buildTool.sonarQube()
