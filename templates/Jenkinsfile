@@ -83,8 +83,11 @@ pipeline {
 
     stage('Deployment') {
       when {
-        branch pattern: 'release/*', comparator: 'GLOB'
         expression { return isBuildSuccess() }
+        anyOf {
+          branch pattern: 'release/*', comparator: 'GLOB'
+          branch 'develop'
+        }
       }
       steps {
         withYarnAuth('cesmarvin_npm_token') {
