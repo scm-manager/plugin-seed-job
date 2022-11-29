@@ -5,28 +5,24 @@ def createJob(String pluginName) {
 
     branchSources {
       branchSource {
-
         source {
-          github {
-            id('github@scm-manager/' + pluginName)
-            credentialsId('cesmarvin-github')
-            repoOwner('scm-manager')
-            repository(pluginName)
-            configuredByUrl(true)
-            repositoryUrl("https://github.com/scm-manager/" + pluginName)
+          scmManager {
+            id('ecosystem@scm-manager/' + pluginName)
+            credentialsId('SCM-Manager')
+            serverUrl('https://ecosystem.cloudogu.com/scm')
+            repository('scm-manager-plugins/' + pluginName)
             traits {
-              gitHubBranchDiscovery {
-                strategyId(1)
-              }
-              gitHubPullRequestDiscovery {
-                strategyId(1)
-              }
               localBranchTrait()
+              branchDiscoveryTrait()
+              tagDiscoveryTrait()
+              pullRequestDiscoveryTrait {
+                excludeBranchesWithPRs(true)
+              }
             }
           }
         }
 
-        buildStrategies {
+        strategy {
           buildRegularBranches()
           buildChangeRequests {
             ignoreTargetOnlyChanges true

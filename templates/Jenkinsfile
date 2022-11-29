@@ -90,7 +90,7 @@ pipeline {
         }
       }
       steps {
-        withYarnAuth('cesmarvin_npm_token') {
+        withYarnAuth('npm-token-scm-manager') {
           script {
             buildTool.deploy()
           }
