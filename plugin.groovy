@@ -10,11 +10,9 @@ def createJob(String pluginName) {
             id('ecosystem@scm-manager/' + pluginName)
             credentialsId('SCM-Manager')
             serverUrl('https://ecosystem.cloudogu.com/scm')
-            repository('scm-manager-plugins/' + pluginName)
+            repository('scm-manager-plugins/' + pluginName + '/git')
             traits {
-              localBranchTrait()
-              branchDiscoveryTrait()
-              tagDiscoveryTrait()
+              scmManagerBranchDiscoveryTrait()
               pullRequestDiscoveryTrait {
                 excludeBranchesWithPRs(true)
               }
@@ -23,11 +21,11 @@ def createJob(String pluginName) {
         }
 
         strategy {
-          buildRegularBranches()
+/*          buildRegularBranches()
           buildChangeRequests {
             ignoreTargetOnlyChanges true
             ignoreUntrustedChanges true
-          }
+          }*/
         }
 
       }
