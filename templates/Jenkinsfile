@@ -283,7 +283,7 @@ class Gradle implements BuildTool {
   }
 
   void deploy() {
-    script.withCredentials([script.usernamePassword(credentialsId: 'maven.scm-manager.org', passwordVariable: 'serverPassword', usernameVariable: 'serverUsername')]) {
+    script.withCredentials([script.usernamePassword(credentialsId: 'packages-scm-manager-org', passwordVariable: 'serverPassword', usernameVariable: 'serverUsername')]) {
       gradle "publish -PpackagesScmManagerUsername=${script.env.serverUsername} -PpackagesScmManagerPassword=${script.env.serverPassword}"
     }
   }
