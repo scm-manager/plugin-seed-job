@@ -72,12 +72,10 @@ def createScmPluginJenkinsfile() {
 }
 
 def createJobs() {
-  URL apiUrl = new URL("https://api.github.com/orgs/scm-manager/repos")
+  URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/scm-manager-plugins")
   def repositories = new groovy.json.JsonSlurper().parse(apiUrl)
-  repositories.each { repo ->
-    if (repo.name.startsWith("scm-") && repo.name.endsWith("-plugin")) {
-      createJob(repo.name)
-    }
+  repositories._embedded.repositories.each{ repo ->
+    createJob(repo.name)
   } 
 }
 
