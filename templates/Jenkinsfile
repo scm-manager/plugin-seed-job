@@ -46,8 +46,8 @@ pipeline {
         sh 'git fetch --all'
 
         // checkout, reset and merge
-        sh 'git checkout master'
-        sh 'git reset --hard origin/master'
+        sh 'git checkout main'
+        sh 'git reset --hard origin/main'
         sh "git merge --ff-only ${env.BRANCH_NAME}"
 
         // set tag
@@ -74,7 +74,7 @@ pipeline {
     stage('SonarQube') {
       steps {
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
-        sh 'git fetch origin master'
+        sh 'git fetch origin main'
         script {
           buildTool.sonarQube()
         }
@@ -110,7 +110,7 @@ pipeline {
       }
       steps {
         // push changes back to remote repository
-        authGit 'cesmarvin-github', 'push origin master --tags'
+        authGit 'cesmarvin-github', 'push origin main --tags'
         authGit 'cesmarvin-github', 'push origin --tags'
       }
     }
@@ -132,7 +132,7 @@ pipeline {
               sh "mv ${buildTool.releaseDescriptorPath()} ${filename}"
               sh "git add ${filename}"
               commit "${pluginName}: release ${releaseVersion}"
-              authGit 'cesmarvin-github', 'push origin HEAD:master'
+              authGit 'cesmarvin-github', 'push origin HEAD:main'
             }
           }
         }
@@ -147,7 +147,7 @@ pipeline {
       steps {
         sh returnStatus: true, script: 'git branch -D develop'
         sh 'git checkout develop'
-        sh 'git merge master'
+        sh 'git merge main'
         script {
           buildTool.setVersionToNextSnapshot()
         }
@@ -293,8 +293,8 @@ class Gradle implements BuildTool {
   void sonarQube() {
     script.withSonarQubeEnv('sonarcloud.io-scm') {
       String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
-      if (script.env.BRANCH_NAME != 'master') {
-        sonar += ' -Dsonar.branch.target=master'
+      if (script.env.BRANCH_NAME != 'main') {
+        sonar += ' -Dsonar.branch.target=main'
       }
       gradle sonar
     }
@@ -360,8 +360,8 @@ class Maven implements BuildTool {
   void sonarQube() {
     script.withSonarQubeEnv('sonarcloud.io-scm') {
       String sonar = "${script.env.SONAR_MAVEN_GOAL} -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
-      if (script.env.BRANCH_NAME != 'master') {
-        sonar += ' -Dsonar.branch.target=master'
+      if (script.env.BRANCH_NAME != 'main') {
+        sonar += ' -Dsonar.branch.target=main'
       }
       mvn sonar
     }
