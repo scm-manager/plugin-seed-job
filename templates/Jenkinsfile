@@ -124,7 +124,7 @@ pipeline {
         sh 'rm -rf plugin-center || true'
         sh 'mkdir plugin-center'
         dir('plugin-center') {
-          git branch: 'master', changelog: false, poll: false, url: 'https://github.com/scm-manager/website.git'
+          git branch: 'master', changelog: false, poll: false, url: 'https://ecosystem.cloudogu.com/scm/repo/scm-manager/website'
           script {
             String filename = releaseVersion.replace('.', '-') + '.yaml'
             String pluginName = env.JOB_NAME.split('/')[1]
