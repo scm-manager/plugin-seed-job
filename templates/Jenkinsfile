@@ -110,8 +110,8 @@ pipeline {
       }
       steps {
         // push changes back to remote repository
-        authGit 'cesmarvin-github', 'push origin main --tags'
-        authGit 'cesmarvin-github', 'push origin --tags'
+        authGit 'cesmarvin', 'push origin main --tags'
+        authGit 'cesmarvin', 'push origin --tags'
       }
     }
 
@@ -132,7 +132,7 @@ pipeline {
               sh "mv ${buildTool.releaseDescriptorPath()} ${filename}"
               sh "git add ${filename}"
               commit "${pluginName}: release ${releaseVersion}"
-              authGit 'cesmarvin-github', 'push origin HEAD:main'
+              authGit 'cesmarvin', 'push origin HEAD:main'
             }
           }
         }
@@ -153,7 +153,7 @@ pipeline {
         }
 
         commit 'Prepare for next development iteration'
-        authGit 'cesmarvin-github', 'push origin develop'
+        authGit 'cesmarvin', 'push origin develop'
       }
     }
 
@@ -163,7 +163,7 @@ pipeline {
         expression { return isBuildSuccess() }
       }
       steps {
-        authGit 'cesmarvin-github', "push origin :${env.BRANCH_NAME}"
+        authGit 'cesmarvin', "push origin :${env.BRANCH_NAME}"
       }
     }
 
