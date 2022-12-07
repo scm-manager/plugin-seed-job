@@ -81,28 +81,6 @@ pipeline {
       }
     }
 
-    stage('Deployment') {
-      when {
-        expression { return isBuildSuccess() }
-        anyOf {
-          branch pattern: 'release/*', comparator: 'GLOB'
-          branch 'develop'
-        }
-      }
-      steps {
-        withYarnAuth('npm-token-scm-manager') {
-          script {
-            buildTool.deploy()
-          }
-        }
-      }
-      post {
-        always {
-          sh 'rm -f settings.xml .npmrc .yarnrc || true'
-        }
-      }
-    }
-
     stage('Push Tag') {
       when {
         branch pattern: 'release/*', comparator: 'GLOB'
