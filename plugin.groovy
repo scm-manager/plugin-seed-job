@@ -72,7 +72,7 @@ def createScmPluginJenkinsfile() {
 }
 
 def createJobs() {
-  URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/scm-manager-plugins")
+  URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/scm-manager-plugins?pageSize=1000")
   def repositories = new groovy.json.JsonSlurper().parse(apiUrl)
   repositories._embedded.repositories.each{ repo ->
     createJob(repo.name)
