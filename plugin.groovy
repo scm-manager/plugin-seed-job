@@ -1,7 +1,8 @@
 #!/usr/bin/env groovy
 
-def createJob(String pluginName) {
-  multibranchPipelineJob('scm-manager-plugins/' + pluginName) {
+def createJob(String pluginName, boolean premium) {
+  def namespace = premium? "scm-manager-premium-plugins" : "scm-manager-plugins"
+  multibranchPipelineJob("${namespace}/${pluginName}") {
 
     branchSources {
       branchSource {
@@ -10,7 +11,7 @@ def createJob(String pluginName) {
             id('ecosystem@scm-manager/' + pluginName)
             credentialsId('SCM-Manager')
             serverUrl('https://ecosystem.cloudogu.com/scm')
-            repository('scm-manager-plugins/' + pluginName + '/git')
+            repository("${namespace}/${pluginName}/git")
             traits {
               scmManagerBranchDiscoveryTrait()
               pullRequestDiscoveryTrait {
@@ -21,11 +22,6 @@ def createJob(String pluginName) {
         }
 
         strategy {
-/*          buildRegularBranches()
-          buildChangeRequests {
-            ignoreTargetOnlyChanges true
-            ignoreUntrustedChanges true
-          }*/
         }
 
       }
@@ -41,55 +37,69 @@ def createJob(String pluginName) {
       pipelineBranchDefaultsProjectFactory {
         // The ID of the default Jenkinsfile to use from the global Config
         // File Management.
-        scriptId 'ScmPluginJenkinsfile'
+        scriptId(premium ? 'ScmPremiumPluginJenkinsfile' : 'ScmPluginJenkinsfile')
 
         // If enabled, the configured default Jenkinsfile will be run within
         // a Groovy sandbox.
         useSandbox false
       }
     }
-
   }
 
-  queue('scm-manager-plugins/' + pluginName)
+  queue("${namespace}/${pluginName}")
 }
 
 def createFolders() {
   folder('scm-manager-plugins') {
     description('SCM-Manager Plugins')
   }
+  folder('scm-manager-premium-plugins') {
+    description('SCM-Manager Premium Plugins')
+  }
 }
 
-def createScmPluginJenkinsfile() {
+def createScmPluginJenkinsfiles() {
+  createScmPluginJenkinsfile(false)
+  createScmPluginJenkinsfile(true)
+}
+
+def createScmPluginJenkinsfile(boolean premium) {
   configFiles {
     groovyScript {
-      id('ScmPluginJenkinsfile')
+      id(premium ? 'ScmPremiumPluginJenkinsfile' : 'ScmPluginJenkinsfile')
       name('Jenkinsfile')
-      comment('Jenkinsfile for SCM-Manager Plugins')
-      content(readFileFromWorkspace('templates/Jenkinsfile'))
+      comment('Jenkinsfile for SCM-Manager ' + (premium ? "premium " : "") + 'Plugins')
+      content(readFileFromWorkspace(premium ? 'templates/Jenkinsfile.premium' : 'templates/Jenkinsfile.default'))
     }
   }
 }
 
 def createJobs() {
-  URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/scm-manager-plugins?pageSize=1000")
+  createJobs(false)
+  createJobs(true)
+}
+
+def createJobs(boolean premium) {
+  def namespace = premium ? "scm-manager-premium-plugins" : "scm-manager-plugins"
+  URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/${namespace}?pageSize=1000")
   def repositories = new groovy.json.JsonSlurper().parse(apiUrl)
   repositories._embedded.repositories.each{ repo ->
-    createJob(repo.name)
-  } 
+    createJob(repo.name, premium)
+  }
 }
 
 def pluginName = jm.getParameters().pluginName
+def premiumPlugin = jm.getParameters().premiumPlugin.toString().toBoolean()
 
 if ("none".equals(pluginName)) {
-  createScmPluginJenkinsfile()
+  createScmPluginJenkinsfiles()
 } else if ("all".equals(pluginName)) {
-  createScmPluginJenkinsfile()
+  createScmPluginJenkinsfiles()
   createFolders()
   createJobs()
 } else {
-  createScmPluginJenkinsfile()
+  createScmPluginJenkinsfile(premiumPlugin)
   createFolders()
-  createJob(pluginName)
+  createJob(pluginName, premiumPlugin)
 }
 

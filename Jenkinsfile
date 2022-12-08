@@ -2,7 +2,8 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: pluginNameDescription(), defaultValue: 'none')
+      string(name: 'pluginName', trim: true, description: pluginNameDescription(), defaultValue: 'none'),
+      booleanParam(name: 'premiumPlugin', description: "Select this, if the plugin should be handled as a premium plugin")
     ])
   ])
 
@@ -18,7 +19,6 @@ node {
       echo 'skip, executing job dsl in order to avoid bringing an unfinished feature live.'
     }
   }
-
 }
 
 def pluginNameDescription() {
