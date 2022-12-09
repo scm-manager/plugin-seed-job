@@ -1,6 +1,4 @@
 #!groovy
-package templates
-
 pipeline {
   options {
     buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -23,11 +21,7 @@ pipeline {
     stage('Prepare build') {
       steps {
         script {
-          if (fileExists('build.gradle')) {
-            buildTool = new Gradle(this)
-          } else {
-            buildTool = new Maven(this)
-          }
+          buildTool = new Gradle(this)
         }
       }
     }
@@ -45,6 +39,7 @@ pipeline {
 
         // fetch all remotes from origin
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh "git checkout ${env.BRANCH_NAME}"
         sh 'git fetch --all'
 
         // checkout, reset and merge
@@ -80,8 +75,8 @@ pipeline {
       }
       steps {
         // push changes back to remote repository
-        authGit 'cesmarvin', 'push origin main --tags'
-        authGit 'cesmarvin', 'push origin --tags'
+        authGit 'SCM-Manager', 'push origin main --tags'
+        authGit 'SCM-Manager', 'push origin --tags'
       }
     }
 
@@ -99,7 +94,7 @@ pipeline {
         }
 
         commit 'Prepare for next development iteration'
-        authGit 'cesmarvin', 'push origin develop'
+        authGit 'SCM-Manager', 'push origin develop'
       }
     }
 
@@ -109,7 +104,7 @@ pipeline {
         expression { return isBuildSuccess() }
       }
       steps {
-        authGit 'cesmarvin', "push origin :${env.BRANCH_NAME}"
+        authGit 'SCM-Manager', "push origin :${env.BRANCH_NAME}"
       }
     }
   }
@@ -251,85 +246,6 @@ class Gradle implements BuildTool {
 
   void gradle(String command) {
     script.sh "./gradlew ${command}"
-  }
-
-}
-
-class Maven implements BuildTool {
-
-  def script
-
-  Maven(def script) {
-    this.script = script
-  }
-
-  void setVersion(String version) {
-    mvn "versions:set -DgenerateBackupPoms=false -DnewVersion=${version}"
-    mvn 'smp:fix'
-    script.sh 'git add pom.xml'
-    try {
-      script.sh 'git add package.json'
-    } catch (Exception e) {
-      println('Could not add package.json')
-    }
-  }
-
-  void check() {
-    mvn 'clean org.jacoco:jacoco-maven-plugin:0.8.5:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.5:report -Dmaven.test.failure.ignore=true'
-    // Archive Unit and integration test results, if any
-    script.junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml,**/target/surefire-reports/TEST-*.xml,**/target/jest-reports/TEST-*.xml'
-  }
-
-  void build() {
-    mvn 'clean package -DskipTests'
-    script.archiveArtifacts 'target/*.smp'
-  }
-
-  void sonarQube() {
-    script.withSonarQubeEnv('sonarcloud.io-scm') {
-      String sonar = "${script.env.SONAR_MAVEN_GOAL} -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
-      if (script.env.BRANCH_NAME != 'main') {
-        sonar += ' -Dsonar.branch.target=main'
-      }
-      mvn sonar
-    }
-  }
-
-  void deploy() {
-    script.withCredentials([script.usernamePassword(credentialsId: 'maven.scm-manager.org', passwordVariable: 'serverPassword', usernameVariable: 'serverUsername')]) {
-      script.writeFile file: '.m2/settings.xml', text: """
-      <settings>
-        <servers>
-          <server>
-            <id>packages.scm-manager.org</id>
-            <username>${script.env.serverUsername}</username>
-            <password>${script.env.serverPassword}</password>
-          </server>
-        </servers>
-      </settings>
-      """
-    }
-
-    mvn '-DskipTests -DaltReleaseDeploymentRepository=packages.scm-manager.org::default::https://packages.scm-manager.org/repository/plugin-releases/ -DaltSnapshotDeploymentRepository=packages.scm-manager.org::default::https://packages.scm-manager.org/repository/plugin-snapshots/ -s .m2/settings.xml deploy'
-  }
-
-  void mvn(String command) {
-    script.sh "./mvnw --batch-mode -U -e  -DperformRelease -Dlicense.useDefaultExcludes=true -Dmaven.javadoc.failOnError=false ${command}"
-  }
-
-  String releaseDescriptorPath() {
-    return "${script.env.WORKSPACE}/target/release.yaml"
-  }
-
-  void setVersionToNextSnapshot() {
-    mvn "build-helper:parse-version versions:set -DgenerateBackupPoms=false -DnewVersion='\${parsedVersion.majorVersion}.\${parsedVersion.nextMinorVersion}.0-SNAPSHOT'"
-    mvn 'smp:fix'
-    script.sh 'git add pom.xml'
-    try {
-      script.sh 'git add package.json'
-    } catch (Exception e) {
-      println('Could not add package.json')
-    }
   }
 
 }
