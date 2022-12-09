@@ -31,6 +31,7 @@ pipeline {
         branch pattern: 'release/*', comparator: 'GLOB'
       }
       steps {
+        sh "git checkout ${env.BRANCH_NAME}"
         // read version from brach, set it and commit it
         script {
           buildTool.setVersion(releaseVersion)
@@ -39,7 +40,6 @@ pipeline {
 
         // fetch all remotes from origin
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
-        sh "git checkout ${env.BRANCH_NAME}"
         sh 'git fetch --all'
 
         // checkout, reset and merge
