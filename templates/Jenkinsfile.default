@@ -99,6 +99,25 @@ pipeline {
       }
     }
 
+    stage('Snapshot Deployment') {
+      when {
+        expression { return isBuildSuccess() }
+        anyOf {
+          branch pattern: 'develop', comparator: 'GLOB'
+        }
+      }
+      steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'packages-scm-manager-org', usernameVariable: 'serverUsername', passwordVariable: 'serverPassword')
+        ]) {
+          script {
+            String pluginName = env.JOB_NAME.split('/')[1]
+            sh 'curl --fail --silent -u ${serverUsername}:${serverPassword} --upload-file ./build/libs/' + pluginName + '.smp https://packages.scm-manager.org/repository/latest_plugin_snapshots/' + pluginName + '.smp'
+          }
+        }
+      }
+    }
+
     stage('Push Tag') {
       when {
         branch pattern: 'release/*', comparator: 'GLOB'
