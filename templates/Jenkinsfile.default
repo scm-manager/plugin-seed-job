@@ -127,6 +127,9 @@ pipeline {
         // push changes back to remote repository
         authGit 'SCM-Manager', 'push origin main --tags'
         authGit 'SCM-Manager', 'push origin --tags'
+        // push tag to GitHub
+        String pluginName = env.JOB_NAME.split('/')[1]
+        authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
       }
     }
 
@@ -196,7 +199,6 @@ pipeline {
         script {
           String pluginName = env.JOB_NAME.split('/')[1]
           authGit 'cesmarvin', "push -f https://github.com/scm-manager/${pluginName} HEAD:${env.BRANCH_NAME}"
-          authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
         }
       }
     }
