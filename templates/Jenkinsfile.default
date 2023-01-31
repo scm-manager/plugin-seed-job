@@ -128,8 +128,10 @@ pipeline {
         authGit 'SCM-Manager', 'push origin main --tags'
         authGit 'SCM-Manager', 'push origin --tags'
         // push tag to GitHub
-        String pluginName = env.JOB_NAME.split('/')[1]
-        authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
+        script {
+          String pluginName = env.JOB_NAME.split('/')[1]
+          authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
+        }
       }
     }
 
