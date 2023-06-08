@@ -145,7 +145,10 @@ pipeline {
 
     stage('Plugin Center') {
       when {
-        branch pattern: 'release/*', comparator: 'GLOB'
+        anyOf {
+          branch pattern: 'release/*', comparator: 'GLOB'
+          branch pattern: 'hotfix/*', comparator: 'GLOB'
+        }
         expression { return isBuildSuccess() }
       }
       steps {
