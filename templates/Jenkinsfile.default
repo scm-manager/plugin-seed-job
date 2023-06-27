@@ -183,7 +183,7 @@ pipeline {
         sh 'rm -rf plugin-center || true'
         sh 'mkdir plugin-center'
         dir('plugin-center') {
-          authGit 'SCM-Manager', 'push origin HEAD:master'
+          authGit 'SCM-Manager', 'push origin HEAD:main'
           git branch: 'master', changelog: false, poll: false, url: 'https://ecosystem.cloudogu.com/scm/repo/scm-manager/website'
           script {
             String filename = releaseVersion.replace('.', '-') + '.yaml'
