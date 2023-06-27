@@ -25,7 +25,35 @@ pipeline {
         }
       }
     }
+    stage('Validate core version') {
+      when {
+        anyOf {
+          branch pattern: 'release/*', comparator: 'GLOB'
+          branch pattern: 'hotfix/*', comparator: 'GLOB'
+        }
+      }
+      steps {
+        script {
+          if (fileExists('package.json')) {
+            def packageJson = readJSON file: 'package.json'
+            def uiPluginVersion = packageJson.get("dependencies").get("@scm-manager/ui-plugins")
+            if (uiPluginVersion.contains("-")) {
+              currentBuild.result = 'FAILURE'
+              error("Invalid version of ui-plugins in package.json found: ${uiPluginVersion}. Please use official version instead of snapshot.")
+            }
+          }
 
+          def propertiesFile = readFile('build.gradle')
+          def lines = propertiesFile.readLines()
+          lines.collect{ line ->
+            if (line.contains("scmVersion") && line.contains("SNAPSHOT")) {
+              currentBuild.result = 'FAILURE'
+              error("Invalid core version in build.gradle found. Please use official version instead of snapshot.")
+            }
+          }
+        }
+      }
+    }
     stage('Set Version') {
       when {
         anyOf {
