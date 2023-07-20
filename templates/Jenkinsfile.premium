@@ -50,6 +50,10 @@ pipeline {
               currentBuild.result = 'FAILURE'
               error("Invalid core version in build.gradle found. Please use official version instead of snapshot.")
             }
+            if (line.contains("sonia.scm.plugins:") && line.contains("SNAPSHOT")) {
+              currentBuild.result = 'FAILURE'
+              error("Invalid plugin dependency version in build.gradle found. Please use proper versions of all dependencies.")
+            }
           }
         }
       }
