@@ -37,6 +37,9 @@ pipeline {
           if (fileExists('package.json')) {
             def packageJson = readJSON file: 'package.json'
             def uiPluginVersion = packageJson.get("dependencies").get("@scm-manager/ui-plugins")
+            if (uiPluginVersion == null) {
+              uiPluginVersion = packageJson.get("devDependencies").get("@scm-manager/ui-plugins");
+            }
             if (uiPluginVersion.contains("-")) {
               currentBuild.result = 'FAILURE'
               error("Invalid version of ui-plugins in package.json found: ${uiPluginVersion}. Please use official version instead of snapshot.")
