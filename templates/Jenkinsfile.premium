@@ -226,7 +226,7 @@ void tag(String version) {
   sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' tag -m '${message}' ${version}"
 }
 
-void isBuildSuccess() {
+boolean isBuildSuccess() {
   return currentBuild.result == null || currentBuild.result == 'SUCCESS'
 }
 
@@ -299,8 +299,8 @@ class Gradle implements BuildTool {
   void sonarQube() {
     script.withSonarQubeEnv('sonarcloud.io-scm') {
       String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME}"
-      if (script.env.BRANCH_NAME != 'main') {
-        sonar += ' -Dsonar.branch.target=main'
+      if (script.env.BRANCH_NAME != 'develop') {
+        sonar += ' -Dsonar.branch.target=develop'
       }
       gradle sonar
     }

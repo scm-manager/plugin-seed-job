@@ -109,7 +109,7 @@ pipeline {
     stage('SonarQube') {
       steps {
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
-        sh 'git fetch origin main'
+        sh 'git fetch origin develop'
         script {
           buildTool.sonarQube()
         }
@@ -309,7 +309,7 @@ void tag(String version) {
   sh "git -c user.name='CES Marvin' -c user.email='cesmarvin@cloudogu.com' tag -m '${message}' ${version}"
 }
 
-void isBuildSuccess() {
+boolean isBuildSuccess() {
   return currentBuild.result == null || currentBuild.result == 'SUCCESS'
 }
 
@@ -383,8 +383,8 @@ class Gradle implements BuildTool {
       String repoNamespace = script.env.JOB_NAME.split('/')[0]
       String repoName = script.env.JOB_NAME.split('/')[1]
       String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME} -Dsonar.analysis.scmm-repo=${repoNamespace}/${repoName}"
-      if (script.env.BRANCH_NAME != 'main') {
-        sonar += ' -Dsonar.branch.target=main'
+      if (script.env.BRANCH_NAME != 'develop') {
+        sonar += ' -Dsonar.branch.target=develop'
       }
       gradle sonar
     }
