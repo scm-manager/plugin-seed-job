@@ -80,10 +80,14 @@ pipeline {
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
         sh 'git fetch --all'
 
-        // checkout, reset and merge
-        sh 'git checkout main'
-        sh 'git reset --hard origin/main'
-        sh "git merge --ff-only ${env.BRANCH_NAME}"
+        script {
+          if (isReleaseBuild()) {
+            // checkout, reset and merge
+            sh 'git checkout main'
+            sh 'git reset --hard origin/main'
+            sh "git merge --ff-only ${env.BRANCH_NAME}"
+          }
+        }
 
         // set tag
         tag releaseVersion
@@ -167,11 +171,15 @@ pipeline {
         expression { return isBuildSuccess() }
       }
       steps {
-        // push changes back to remote repository
-        authGit 'SCM-Manager', 'push origin main --tags'
-        authGit 'SCM-Manager', 'push origin --tags'
-        // push tag to GitHub
         script {
+          // push changes back to remote repository
+          if (isReleaseBuild()) {
+            authGit 'SCM-Manager', 'push origin main --tags'
+            authGit 'SCM-Manager', 'push origin --tags'
+          } else {
+            authGit 'SCM-Manager', "push origin ${env.BRANCH_NAME} --tags"
+          }
+          // push tag to GitHub
           String pluginName = env.JOB_NAME.split('/')[1]
           authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
         }
@@ -190,9 +198,11 @@ pipeline {
         sh 'rm -rf plugin-center || true'
         sh 'mkdir plugin-center'
         dir('plugin-center') {
-          authGit 'SCM-Manager', 'push origin HEAD:main'
-          git branch: 'master', changelog: false, poll: false, url: 'https://ecosystem.cloudogu.com/scm/repo/scm-manager/website'
           script {
+            if (isReleaseBuild()) {
+              authGit 'SCM-Manager', 'push origin HEAD:main'
+            }
+            git branch: 'master', changelog: false, poll: false, url: 'https://ecosystem.cloudogu.com/scm/repo/scm-manager/website'
             String filename = releaseVersion.replace('.', '-') + '.yaml'
             String pluginName = env.JOB_NAME.split('/')[1]
             dir("content/plugins/${pluginName}/releases") {
