@@ -111,6 +111,14 @@ pipeline {
     }
 
     stage('SonarQube') {
+      when {
+        not {
+          anyOf {
+            branch pattern: 'release/*', comparator: 'GLOB'
+            branch pattern: 'hotfix/*', comparator: 'GLOB'
+          }
+        }
+      }
       steps {
         sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
         sh 'git fetch origin develop'
