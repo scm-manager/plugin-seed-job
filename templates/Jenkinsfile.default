@@ -400,7 +400,11 @@ class Gradle implements BuildTool {
     script.withSonarQubeEnv('sonarcloud.io-scm') {
       String repoNamespace = script.env.JOB_NAME.split('/')[0]
       String repoName = script.env.JOB_NAME.split('/')[1]
-      String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.branch.name=${script.env.BRANCH_NAME} -Dsonar.analysis.scmm-repo=${repoNamespace}/${repoName}"
+      def status = script.sh returnStatus: true, script: "curl -f https://sonarcloud.io/api/project_branches/list?project=sonia.scm.plugins:${repoName}"
+      String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.analysis.scmm-repo=${repoNamespace}/${repoName}"
+      if (status == 0) {
+        sonar += " -Dsonar.branch.name=${script.env.BRANCH_NAME}"
+      }
       if (script.env.BRANCH_NAME != 'develop') {
         sonar += ' -Dsonar.branch.target=develop'
       }
@@ -433,3 +437,4 @@ class Gradle implements BuildTool {
     script.sh "./gradlew ${command}"
   }
 }
+
