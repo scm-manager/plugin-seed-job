@@ -69,16 +69,21 @@ pipeline {
         }
       }
       steps {
+        sh "git tag -d ${releaseVersion} || true"
+        sh "git fetch --tags"
         sh "git checkout ${env.BRANCH_NAME}"
+        sh "git reset --hard origin/${env.BRANCH_NAME}"
+
+        // fetch all remotes from origin
+        sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
+        sh 'git fetch --all'
+
         // read version from brach, set it and commit it
         script {
           buildTool.setVersion(releaseVersion)
         }
         commit "release version ${releaseVersion}"
 
-        // fetch all remotes from origin
-        sh 'git config --replace-all "remote.origin.fetch" "+refs/heads/*:refs/remotes/origin/*"'
-        sh 'git fetch --all'
 
         script {
           if (isReleaseBuild()) {
