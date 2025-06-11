@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
-def createJob(String pluginName, boolean premium) {
-  def namespace = premium? "scm-manager-premium-plugins" : "scm-manager-plugins"
+def createJob(String pluginName) {
+  def namespace = "scm-manager-plugins"
   multibranchPipelineJob("${namespace}/${pluginName}") {
 
     branchSources {
@@ -37,7 +37,7 @@ def createJob(String pluginName, boolean premium) {
       pipelineBranchDefaultsProjectFactory {
         // The ID of the default Jenkinsfile to use from the global Config
         // File Management.
-        scriptId(premium ? 'ScmPremiumPluginJenkinsfile' : 'ScmPluginJenkinsfile')
+        scriptId('ScmPluginJenkinsfile')
 
         // If enabled, the configured default Jenkinsfile will be run within
         // a Groovy sandbox.
@@ -53,53 +53,39 @@ def createFolders() {
   folder('scm-manager-plugins') {
     description('SCM-Manager Plugins')
   }
-  folder('scm-manager-premium-plugins') {
-    description('SCM-Manager Premium Plugins')
-  }
 }
 
-def createScmPluginJenkinsfiles() {
-  createScmPluginJenkinsfile(false)
-  createScmPluginJenkinsfile(true)
-}
-
-def createScmPluginJenkinsfile(boolean premium) {
+def createScmPluginJenkinsfile() {
   configFiles {
     groovyScript {
-      id(premium ? 'ScmPremiumPluginJenkinsfile' : 'ScmPluginJenkinsfile')
+      id('ScmPluginJenkinsfile')
       name('Jenkinsfile')
-      comment('Jenkinsfile for SCM-Manager ' + (premium ? "premium " : "") + 'Plugins')
-      content(readFileFromWorkspace(premium ? 'templates/Jenkinsfile.premium' : 'templates/Jenkinsfile.default'))
+      comment('Jenkinsfile for SCM-Manager Plugins')
+      content(readFileFromWorkspace('templates/Jenkinsfile.default'))
     }
   }
 }
 
 def createJobs() {
-  createJobs(false)
-  createJobs(true)
-}
-
-def createJobs(boolean premium) {
-  def namespace = premium ? "scm-manager-premium-plugins" : "scm-manager-plugins"
+  def namespace = "scm-manager-plugins"
   URL apiUrl = new URL("https://ecosystem.cloudogu.com/scm/api/v2/repositories/${namespace}?pageSize=1000")
   def repositories = new groovy.json.JsonSlurper().parse(apiUrl)
   repositories._embedded.repositories.each{ repo ->
-    createJob(repo.name, premium)
+    createJob(repo.name)
   }
 }
 
 def pluginName = jm.getParameters().pluginName
-def premiumPlugin = jm.getParameters().premiumPlugin.toString().toBoolean()
 
 if ("none".equals(pluginName)) {
-  createScmPluginJenkinsfiles()
+  createScmPluginJenkinsfile()
 } else if ("all".equals(pluginName)) {
-  createScmPluginJenkinsfiles()
+  createScmPluginJenkinsfile()
   createFolders()
   createJobs()
 } else {
-  createScmPluginJenkinsfile(premiumPlugin)
+  createScmPluginJenkinsfile()
   createFolders()
-  createJob(pluginName, premiumPlugin)
+  createJob(pluginName)
 }
 

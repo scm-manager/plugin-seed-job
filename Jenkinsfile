@@ -2,8 +2,7 @@ node {
 
   properties([
     parameters([
-      string(name: 'pluginName', trim: true, description: pluginNameDescription(), defaultValue: 'none'),
-      booleanParam(name: 'premiumPlugin', description: "Select this, if the plugin should be handled as a premium plugin")
+      string(name: 'pluginName', trim: true, description: pluginNameDescription(), defaultValue: 'none')
     ])
   ])
 
