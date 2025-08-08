@@ -168,7 +168,7 @@ pipeline {
           usernamePassword(credentialsId: 'packages-scm-manager-org', usernameVariable: 'serverUsername', passwordVariable: 'serverPassword')
         ]) {
           script {
-            String pluginName = env.JOB_NAME.split('/')[1]
+            String pluginName = env.JOB_NAME.split('/')[2]
             sh 'curl --fail --silent -u ${serverUsername}:${serverPassword} --upload-file ./build/libs/' + pluginName + '.smp https://packages.scm-manager.org/repository/latest_plugin_snapshots/' + pluginName + '.smp'
           }
         }
@@ -193,7 +193,7 @@ pipeline {
             authGit 'SCM-Manager', "push origin ${env.BRANCH_NAME} --tags"
           }
           // push tag to GitHub
-          String pluginName = env.JOB_NAME.split('/')[1]
+          String pluginName = env.JOB_NAME.split('/')[2]
           authGit 'cesmarvin', "push --tags https://github.com/scm-manager/${pluginName}"
         }
       }
@@ -217,7 +217,7 @@ pipeline {
             }
             git branch: 'master', changelog: false, poll: false, url: 'https://ecosystem.cloudogu.com/scm/repo/scm-manager/website'
             String filename = releaseVersion.replace('.', '-') + '.yaml'
-            String pluginName = env.JOB_NAME.split('/')[1]
+            String pluginName = env.JOB_NAME.split('/')[2]
             dir("content/plugins/${pluginName}/releases") {
               sh "mv ${buildTool.releaseDescriptorPath()} ${filename}"
               sh "git add ${filename}"
@@ -268,7 +268,7 @@ pipeline {
       }
       steps {
         script {
-          String pluginName = env.JOB_NAME.split('/')[1]
+          String pluginName = env.JOB_NAME.split('/')[2]
           authGit 'cesmarvin', "push -f https://github.com/scm-manager/${pluginName} HEAD:${env.BRANCH_NAME}"
         }
       }
@@ -403,8 +403,8 @@ class Gradle implements BuildTool {
 
   void sonarQube() {
     script.withSonarQubeEnv('sonarcloud.io-scm') {
-      String repoNamespace = script.env.JOB_NAME.split('/')[0]
-      String repoName = script.env.JOB_NAME.split('/')[1]
+      String repoNamespace = script.env.JOB_NAME.split('/')[1]
+      String repoName = script.env.JOB_NAME.split('/')[2]
       def status = script.sh returnStatus: true, script: "curl -f https://sonarcloud.io/api/project_branches/list?project=sonia.scm.plugins:${repoName}"
       String sonar = "sonarqube -Dsonar.organization=scm-manager -Dsonar.analysis.scmm-repo=${repoNamespace}/${repoName}"
       if (status == 0) {

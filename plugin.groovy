@@ -50,7 +50,7 @@ def createJob(String pluginName) {
 }
 
 def createFolders() {
-  folder('scm-manager-plugins') {
+  folder('SCM/scm-manager-plugins') {
     description('SCM-Manager Plugins')
   }
 }
