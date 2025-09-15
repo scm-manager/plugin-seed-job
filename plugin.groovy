@@ -2,7 +2,7 @@
 
 def createJob(String pluginName) {
   def namespace = "scm-manager-plugins"
-  multibranchPipelineJob("${namespace}/${pluginName}") {
+  multibranchPipelineJob("SCM/${namespace}/${pluginName}") {
 
     branchSources {
       branchSource {
