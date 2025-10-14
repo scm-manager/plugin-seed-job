@@ -140,6 +140,7 @@ pipeline {
           branch pattern: 'release/*', comparator: 'GLOB'
           branch pattern: 'hotfix/*', comparator: 'GLOB'
           branch pattern: 'develop', comparator: 'GLOB'
+          branch pattern: 'feature/react-19-upgrade', comparator: 'GLOB'
         }
       }
       steps {
