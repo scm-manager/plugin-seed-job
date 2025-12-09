@@ -399,7 +399,8 @@ class Gradle implements BuildTool {
     // ERROR: Test reports were found but none of them are new
     script.sh 'touch build/test-results/*/*.xml || true'
     script.sh 'touch build/jest-reports/TEST-*.xml || true'
-    script.junit allowEmptyResults: true, testResults: 'build/test-results/*/*.xml,build/jest-reports/TEST-*.xml'
+    script.sh 'touch build/vite-reports/TEST-*.xml || true'
+    script.junit allowEmptyResults: true, testResults: 'build/test-results/*/*.xml,build/vite-reports/TEST-*.xml,build/jest-reports/TEST-*.xml'
   }
 
   void build() {
