@@ -15,6 +15,9 @@ pipeline {
   environment {
     HOME = "${env.WORKSPACE}"
     SONAR_USER_HOME = "${env.WORKSPACE}/.sonar"
+    DEPLOY = "${env.SCMM_CUSTOM_PROP_DEPLOY ?: 'DEPLOY'}"
+    SONAR = "${env.SCMM_CUSTOM_PROP_SONAR ?: 'RUN'}"
+    NOTIFICATION_MAIL = "${env.SCMM_CUSTOM_PROP_NOTIFICATION_MAIL ?: 'scm-team@cloudogu.com'}"
   }
 
   stages {
@@ -117,6 +120,7 @@ pipeline {
 
     stage('SonarQube') {
       when {
+        environment name: 'SONAR', value: 'RUN'
         not {
           anyOf {
             branch pattern: 'release/*', comparator: 'GLOB'
@@ -159,6 +163,7 @@ pipeline {
 
     stage('Snapshot Deployment') {
       when {
+        environment name: 'DEPLOY', value: 'DEPLOY'
         expression { return isBuildSuccess() }
         anyOf {
           branch pattern: 'develop', comparator: 'GLOB'
@@ -286,7 +291,7 @@ pipeline {
         expression { return isBuildSuccess() }
       }
       steps {
-        mail to: "scm-team@cloudogu.com",
+        mail to: "${NOTIFICATION_MAIL}",
           subject: "Jenkins Job ${JOB_NAME} - Merge Hotfix Release #${env.BRANCH_NAME}!",
           body: """Please,
           - merge the hotfix release branch ${env.BRANCH_NAME} into main (keep versions of main, merge changelog to keep both versions),
@@ -298,17 +303,17 @@ pipeline {
 
   post {
     failure {
-      mail to: 'scm-team@cloudogu.com',
+      mail to: "${NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
     unstable {
-      mail to: 'scm-team@cloudogu.com',
+      mail to: "${NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
     fixed {
-      mail to: 'scm-team@cloudogu.com',
+      mail to: "${NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Is back to normal with Build #${BUILD_NUMBER}",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
