@@ -291,7 +291,7 @@ pipeline {
         expression { return isBuildSuccess() }
       }
       steps {
-        mail to: "${NOTIFICATION_MAIL}",
+        mail to: "${env.NOTIFICATION_MAIL}",
           subject: "Jenkins Job ${JOB_NAME} - Merge Hotfix Release #${env.BRANCH_NAME}!",
           body: """Please,
           - merge the hotfix release branch ${env.BRANCH_NAME} into main (keep versions of main, merge changelog to keep both versions),
@@ -303,17 +303,17 @@ pipeline {
 
   post {
     failure {
-      mail to: "${NOTIFICATION_MAIL}",
+      mail to: "${env.NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
     unstable {
-      mail to: "${NOTIFICATION_MAIL}",
+      mail to: "${env.NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Build #${BUILD_NUMBER} - ${currentBuild.currentResult}!",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
     fixed {
-      mail to: "${NOTIFICATION_MAIL}",
+      mail to: "${env.NOTIFICATION_MAIL}",
         subject: "Jenkins Job ${JOB_NAME} - Is back to normal with Build #${BUILD_NUMBER}",
         body: "Check console output at ${BUILD_URL} to view the results."
     }
