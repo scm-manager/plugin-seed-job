@@ -16,6 +16,7 @@ def createJob(String pluginName) {
               scmManagerBranchDiscoveryTrait()
               pullRequestDiscoveryTrait {
                 excludeBranchesWithPRs(true)
+                excludeDraftPullRequests(true)
               }
             }
           }
