@@ -144,7 +144,6 @@ pipeline {
           branch pattern: 'release/*', comparator: 'GLOB'
           branch pattern: 'hotfix/*', comparator: 'GLOB'
           branch pattern: 'develop', comparator: 'GLOB'
-          branch pattern: 'feature/react-19-upgrade', comparator: 'GLOB'
         }
       }
       steps {
@@ -167,7 +166,6 @@ pipeline {
         expression { return isBuildSuccess() }
         anyOf {
           branch pattern: 'develop', comparator: 'GLOB'
-          branch pattern: 'feature/react-19-upgrade', comparator: 'GLOB'
         }
       }
       steps {
@@ -176,11 +174,7 @@ pipeline {
         ]) {
           script {
             String pluginName = env.JOB_NAME.split('/')[2]
-            if (env.BRANCH_NAME == 'develop') {
-              sh 'curl --fail --silent -u ${serverUsername}:${serverPassword} --upload-file ./build/libs/' + pluginName + '.smp https://packages.scm-manager.org/repository/latest_plugin_snapshots/' + pluginName + '.smp'
-            } else {
-              sh 'curl --fail --silent -u ${serverUsername}:${serverPassword} --upload-file ./build/libs/' + pluginName + '.smp https://packages.scm-manager.org/repository/react19_plugin_snapshots/' + pluginName + '.smp'
-            }
+            sh 'curl --fail --silent -u ${serverUsername}:${serverPassword} --upload-file ./build/libs/' + pluginName + '.smp https://packages.scm-manager.org/repository/latest_plugin_snapshots/' + pluginName + '.smp'
           }
         }
       }
